@@ -51,6 +51,10 @@ and use the tarball from rpm-build/)
 	up and running. The fedora devel docs go into more detail
 	about this.
 
+	See:
+		http://fedoraproject.org/wiki/PackageMaintainers/Join
+		
+
 	Check the PROCESS_RELEASES variable in pusher.py. This defines
 	what releases to build packages for. You may need to update
 	this if new releases are available as targets since the last
