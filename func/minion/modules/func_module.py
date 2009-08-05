@@ -136,3 +136,32 @@ class FuncModule(object):
         # to know they didnt implement it
         return {}
     
+    def grep(self,word):
+        """
+        An useful utility for searching a specified
+        word in a bunch of methods the module specifies
+        @param word : Word to be searched in method calls
+        """
+        return {}
+
+
+def findout(fn):
+    """
+    A simple decorator to send some more structured info
+    to overlord instead every module does that in their
+    find modules ...
+    """
+    def fn_arg(*args):
+        word = args[1].strip().lower()
+        find_result = fn(args[0],word)
+        structured_result = {}
+        if find_result:
+            for k,v in find_result.iteritems():
+                if find_result[k]:
+                    structured_result["".join([k.im_class.__module__,".",k.__name__])] = v
+            return structured_result
+        return {}
+    return fn_arg
+
+
+

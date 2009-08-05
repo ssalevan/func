@@ -9,6 +9,7 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+
 """
 Abitrary command execution module for func.
 """
@@ -41,7 +42,7 @@ class Command(func_module.FuncModule):
 
         if os.access(command, os.X_OK):
             return True
-        return False
+        return False    
 
     def register_method_args(self):
         """
