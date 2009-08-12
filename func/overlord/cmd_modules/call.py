@@ -197,6 +197,16 @@ class Call(base_command.BaseCommand):
                                help="use delegation to make function call",
                                default=self.delegate,
                                action="store_true")
+        self.parser.add_option('-l', '--logpoll', dest="logpoll",
+                               help="Polls for that call for minion side to get some useful output info.",
+                               action="store_true")
+        self.parser.add_option('-o', '--logone', dest="logone",
+                               help="Polls for that call for minion side to get some useful output info,for only one host,must suply job_id;host as parameter",
+                               action="store")
+        
+        self.parser.add_option('-r', '--progress', dest="progress",
+                               help="Polls for that call for minion side to get the progress.",
+                               action="store")
         self.parser.add_option("", "--filter", dest="filter",
                                help="use filter to and minion facts",
                                action="store")
@@ -323,14 +333,25 @@ class Call(base_command.BaseCommand):
             print res
             return async_results
 
+        #log for only one machine which is more reasonable instead
+        #of doing it for thousands ... 
+        if self.options.logone:
+            self._poll_logs(self.module,self.options.logone)
+            return #terminate no need for more
+        
+        if self.options.progress:
+            self._print_progress(self.module,self.options.progress)
+            return #terminate no need for more
+
         if self.options.async:
             self.partial = {}
             if self.options.nopoll:
                 print "JOB_ID:", pprint.pformat(results)
                 return results
             else:
+                if self.options.logpoll:
+                    self._poll_logs(results)
                 return self.overlord_obj.local.utils.async_poll(results, self.print_results)
-
         # dump the return code stuff atm till we figure out the right place for it
         foo =  self.format_return(results)
         print foo
@@ -342,4 +363,114 @@ class Call(base_command.BaseCommand):
         for i in res.iteritems():
             print self.format_return(i)
 
+    #do it only for some of the hosts if needed !
+    def _poll_logs(self,job_id,host=None):
+        """
+        Here the method polls for log and prints some
+        logs on the screen,which is kind of informative
+        action for other apps and users also !
+        """
+        import time
+        from func.minion.modules.jobs import NUM_OF_LINES
+        #a constant that will tell us from how many same 
+        # logs we will accept that the rest of logs is the
+        #same we should stop somewhere !
+        print_result = {}
+        to_print = {}
+        poll_res = (None,False)#initial state
+        print_first_time = True
+        while not poll_res[1]:#while the job_id is not finished
+            if print_first_time and host:
+                poll_res = self.overlord_obj.tail_log(job_id,host,True)
+            else:
+                poll_res = self.overlord_obj.tail_log(job_id,host)
+                
+            if not poll_res[0]:
+                print "Logging data is initializing ..."
+                time.sleep(0.5)
+                poll_res = self.overlord_obj.tail_log(job_id,host)
+                continue
+            
+            #print the stuff you collected
+            for minion,log in poll_res[0].iteritems():
+                log = self._convert_log_to_list(log)
 
+                if not print_result.has_key(minion):
+                    print_result[minion]=log
+                    to_print[minion]=log
+
+                else:
+                    #print "---------------------------------------------"
+                    #print "PRINT_RESULT :  ",print_result[minion]
+                    #print "LOG IS ",log
+                    
+                    to_print[minion]=list(set(log).difference(set(print_result[minion])))
+                    print_result[minion]=list(set(print_result[minion]).union(set(to_print[minion])))
+                    #should empty the buffer a little bit
+                    #think if you have a file which is 1 GB :)
+                    #print_result[minion] = print_result[minion][-NUM_OF_LINES:]
+                    #print "PRINT_RESULT :  ",print_result[minion]
+                    
+                    #print "to_print ",to_print
+                    #print "---------------------------------------------"
+                    #raw_input()
+                    
+            self._print_dict_result(to_print,print_first_time)
+            if print_first_time and host:
+                print_first_time = False
+                
+            time.sleep(0.5)
+    
+    def _print_progress(self,job_id,host):
+        """
+        Gets the progress for job_id and host
+        """
+        import time
+        from func.utils import ProgressBar,TerminalController 
+        
+        poll_res = (None,False)#initial state
+        first_time = True
+        while not poll_res[1]:#while the job_id is not finished
+            poll_res = self.overlord_obj.check_progress(job_id,host)
+            #print poll_res    
+            if not poll_res[0]:
+                time.sleep(0.5)
+                continue
+            
+            if first_time:
+                
+                term = TerminalController()
+                progress = ProgressBar(term, 'Progress Status',minValue=poll_res[0][host][0],maxValue=poll_res[0][host][1])
+                first_time = False
+            
+            #update the progress bar
+            progress.update(poll_res[0][host][0])
+            #sleep a little bit
+            time.sleep(0.5)
+
+        if first_time:
+            print "Method has no progress ability or some remote error occured"
+        else:
+            #clear the progress bar and say it is done
+            progress.clear()
+            print "JOB FINISHED : ",job_id
+    
+
+    def _print_dict_result(self,result,print_host=True):
+        """
+        An util method that just prints info 
+        in a result dictionary ...
+        """
+        for minion,logs in result.iteritems():
+            if logs:
+                if print_host:
+                    print "------HOST : %s -------"%minion
+                print "\n".join(logs)
+        
+
+    def _convert_log_to_list(self,log):
+        res = []
+        for l in log:
+            if l:
+                res.extend(l.split("\n"))
+        return res

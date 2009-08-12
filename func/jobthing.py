@@ -176,14 +176,13 @@ def batch_run(pool, callback, nforks,**extra_args):
         # we now have a list of job id's for each minion, kill the task
         os._exit(0)
 
+
 def minion_async_run(retriever, method, args,minion_query=None):
     """
     This is a simpler invocation for minion side async usage.
     """
     # to avoid confusion of job id's (we use the same job database)
     # minion jobs contain the string "minion".  
-
-
     job_id = "%s-minion" % pprint.pformat(time.time())
     __update_status(job_id, JOB_ID_RUNNING, -1)
     pid = os.fork()
@@ -199,15 +198,34 @@ def minion_async_run(retriever, method, args,minion_query=None):
             os._exit(0)
 
         try:
+            
             fact_result = None
             if args and type(args[0]) == dict and args[0].has_key('__fact__'):
                 fact_result = minion_query.exec_query(args[0]['__fact__'],True)
             else:
                 function_ref = retriever(method)
+                #here we will append the job_id at the end of the args list
+                #so we can pull it via some decorator and use it for other
+                #purposes like logginng and output tracking per method which
+                #will be useful for lots of applications ...
+                #if you are doing something useful with decorators per methods
+                #be aware of that please ...
+                args = list(args)
+                args.append({'__logger__':True,'job_id':job_id})
+                args = tuple(args)
                 rc = function_ref(*args)
                 
             if fact_result and fact_result[0]: #that means we have True from query so can go on
                 function_ref = retriever(method)
+                #here we will append the job_id at the end of the args list
+                #so we can pull it via some decorator and use it for other
+                #purposes like logginng and output tracking per method which
+                #will be useful for lots of applications ...
+                #if you are doing something useful with decorators per methods
+                #be aware of that please ...
+                args = list(args)
+                args.append({'__logger__':True,'job_id':job_id})
+                args = tuple(args)
                 rc = function_ref(*args[1:])
                 rc = [{'__fact__':fact_result},rc]
             elif fact_result and not fact_result[0]:
@@ -219,6 +237,11 @@ def minion_async_run(retriever, method, args,minion_query=None):
 
         __update_status(job_id, JOB_ID_FINISHED, rc)
         os._exit(0)
+
+
+#import for matching minion job ids with -- overlord job_ids
+from func.index_db import write_index_data
+from func.index_db import key_exists
 
 def job_status(jobid, client_class=None):
  
@@ -240,9 +263,24 @@ def job_status(jobid, client_class=None):
 
 
         some_missing = False
+        match_dict = {}
         for host in interim_results.keys():
 
             minion_job = interim_results[host]
+            #here we inject the minion_job id and overlord job_id
+            #in a file that they point to each other, the reason of
+            #doing that is because overlord looses minion job_id
+            #after getting result from minion, we dont want that
+            #because some applications may need log outputs of some
+            #finished minion methods. The logs of minion methods are kept
+            #in minon site as minion job_id named log files the only way
+            #to track them is having them in dicts {overlord_job_id : minion_job_id}
+            if match_dict.has_key(jobid):
+                match_dict[jobid].append((minion_job,host))
+            else:
+                match_dict={jobid:[]}
+                match_dict[jobid].append((minion_job,host))
+
             client = client_class(host, noglobs=True, async=False)
             minion_result = client.jobs.job_status(minion_job)
 
@@ -259,6 +297,9 @@ def job_status(jobid, client_class=None):
                     partial_results[host] = minion_interim_result
             else: 
                 some_missing = True
+        
+        #write the match dictionary for {overlord_job_id:minion_job_id}
+        write_index_data(match_dict)
 
         if some_missing or not interim_results:
             return (JOB_ID_PARTIAL, partial_results)
