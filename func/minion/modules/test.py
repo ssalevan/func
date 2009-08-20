@@ -64,19 +64,20 @@ class Test(func_module.FuncModule):
         """
         Returns the options config
         """
-        return self.options
+        return self.config_items()
 
     def config_save(self):
 	"""
 	Saves the options config
 	"""
 	self.save_config()
-	return self.options
+        # lame, need to convert the object into a marshaable ds
+	return self.config_items()
 
     def config_set(self, key_name, value):
         setattr(self.options,key_name, value)
         self.save_config()
-        return self.options
+        return self.config_items()
 
     def config_get(self, key_name):
 	return getattr(self.options, key_name)
