@@ -74,6 +74,7 @@ rm -fr $RPM_BUILD_ROOT
 %{_bindir}/func-create-module
 %{_bindir}/func-transmit
 %{_bindir}/func-build-map
+%{_bindir}/func-group
 #%{_bindir}/update-func
 
 /etc/init.d/funcd
@@ -172,6 +173,9 @@ fi
 
 
 %changelog
+* Thu Aug 20 2009 Adrian Likins <alikins@redhat.com> - 0.25-2
+- add func-group
+
 * Thu Jun 11 2009 Adrian Likins <alikins@redhat.com> - 0.25-1
 - add /etc/func/version
 
