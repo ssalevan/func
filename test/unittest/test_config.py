@@ -117,6 +117,8 @@ class TestConfig:
 
     def setUp(self):
         f = open(self.config_file, "w+")
+	if not os.access("/tmp/func-test", os.R_OK):
+		os.mkdir("/tmp/func-test")
         f.write(config_file_1)
         f.close()
 
@@ -124,6 +126,15 @@ class TestConfig:
 
 #    def test_config(self):
 #        cfg = config.read_config(self.config_file, ConfigTest)
+
+
+    def test_config_data(self):
+        foo = self.cfg.option
+        print foo
+        print self.cfg.iteritems()
+        for i in self.cfg.iteritems():
+            print i
+        
     
     def test_config_option(self):
         assert type(self.cfg.option) == type('')
