@@ -106,6 +106,12 @@ class FuncModule(object):
         self.options.write(fh)
         return True
 
+    def config_items(self):
+        l = []
+        for i in self.options.iteritems():
+            l.append(i)
+        return l
+
     def register_rpc(self, handlers, module_name):
         # add the internal methods, note that this means they
         # can get clobbbered by subclass versions
