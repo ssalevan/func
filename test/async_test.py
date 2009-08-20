@@ -5,25 +5,26 @@ import func.jobthing as jobthing
 import time
 import sys
 
-TEST_SLEEP = 5
-EXTRA_SLEEP = 5
+TEST_SLEEP = 1
+EXTRA_SLEEP = 1
 
 SLOW_COMMAND = 1
 QUICK_COMMAND = 2
 RAISES_EXCEPTION_COMMAND = 3
 FAKE_COMMAND = 4
-#TESTS = [ SLOW_COMMAND, QUICK_COMMAND, RAISES_EXCEPTION_COMMAND, FAKE_COMMAND ]
-TESTS = [ QUICK_COMMAND ]
-TESTS = [ SLOW_COMMAND ]
+TESTS = [ SLOW_COMMAND, QUICK_COMMAND, RAISES_EXCEPTION_COMMAND, FAKE_COMMAND ]
+#TESTS = [ QUICK_COMMAND ]
+#TESTS = [ SLOW_COMMAND, QUICK_COMMAND, R ]
 
-def __tester(async,test):
+def __tester(async,test, count):
    if async:
-       overlord= Overlord("*",nforks=10,async=True)
+       overlord= Overlord("*",nforks=3,async=True)
        oldtime = time.time()
 
        job_id = -411
        print
  #      print "======================================================"
+       print "test iteration: %s" % count
        if test == SLOW_COMMAND:
            print "TESTING command that sleeps %s seconds" % TEST_SLEEP
            job_id = overlord.test.sleep(TEST_SLEEP)
@@ -60,14 +61,15 @@ def __tester(async,test):
                print "job not found: %s, %s elapased" % (code, delta)
            time.sleep(1)
    else:
-       print Overlord("*",nforks=10,async=False).test.sleep(5)
-       print Overlord("*",nforks=10,async=False).test.bork(5)
+       print Overlord("*",nforks=3,async=False).test.sleep(5)
+       print Overlord("*",nforks=3,async=False).test.bork(5)
        print Overlord("*",nforks=1,async=False).test.bork(5)
 
 i = 1
-while i < 100:
+while i < 3:
    for t in TESTS:
-      __tester(True,t)
+      __tester(True,t, i)
+   i = i + 1
 
 #print "======================================================="
 #print "Testing non-async call"
