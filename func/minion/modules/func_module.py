@@ -205,7 +205,7 @@ def findout(fn):
     to overlord instead every module does that in their
     find modules ...
     """
-    def fn_arg(*args):
+    def _fn_arg(*args):
         word = args[1].strip().lower()
         find_result = fn(args[0],word)
         structured_result = {}
@@ -215,7 +215,8 @@ def findout(fn):
                     structured_result["".join([k.im_class.__module__,".",k.__name__])] = v
             return structured_result
         return {}
-    return fn_arg
+
+    return _fn_arg
 
 
 
