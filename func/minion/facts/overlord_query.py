@@ -19,8 +19,9 @@ def display_active_facts(result,with_facts=False):
     
     final_display = {}
     for minion_name,minion_result in result.iteritems():
+
         #CAUTION ugly if statements around :)
-        if type(minion_result) == list and type(minion_result[0]) == dict and minion_result[0].has_key('__fact__') :
+        if type(minion_result) == list and len(minion_result) > 0 and type(minion_result[0]) == dict and minion_result[0].has_key('__fact__') :
             if minion_result[0]['__fact__'][0] == True:
                 if with_facts:
                     final_display[minion_name] = minion_result
