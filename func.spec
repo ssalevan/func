@@ -11,7 +11,7 @@
 
 Summary: Remote management framework
 Name: func
-Version: 0.25
+Version: 0.26
 Release: 1%{?dist}
 Source0: %{name}-%{version}.tar.gz
 License: GPLv2+
@@ -173,6 +173,9 @@ fi
 
 
 %changelog
+* Thu Aug 26 2009 Adrian Likins <alikins@redhat.com> - 0.26-1
+- rev
+
 * Thu Aug 20 2009 Adrian Likins <alikins@redhat.com> - 0.25-2
 - add func-group
 
