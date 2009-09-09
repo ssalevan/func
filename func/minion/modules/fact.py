@@ -80,8 +80,10 @@ class FactsModule(func_module.FuncModule):
         #search in methods
         for m in self.list_fact_methods():
             if m.lower().find(word)!=-1:
-                result[self.list_fact_methods].append(m)
+                val = self.call_fact(m)
+                result[self.list_fact_methods].append("%s: %s" % (m,val))
         
+
         #the final collected stuff here
         return result
         
