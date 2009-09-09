@@ -19,7 +19,6 @@ import sys
 from func.overlord import client
 from func.overlord import base_command
 
-
 class Grep(base_command.BaseCommand):
     name = "grep"
     usage = "grep [--modules = 'module1,module2'] search_term"
@@ -77,35 +76,29 @@ class Grep(base_command.BaseCommand):
         
         self.server_spec = self.parentCommand.server_spec
         self.getOverlord()
-        
-        if not self.options.modules: #pull all of the modules
-            self.options.modules = self._get_modules()
-            #print self.options.modules
-        else:
-            self.options.modules = self.options.modules.split(",")
-            
-        results = {}
-        
-        for module in self.options.modules:
-            if self.options.verbose:
-                print "Scanning module :",module
-                
-            tmp_res = self.overlord_obj.run(module,"grep",[self.word])
-            
-            if self.options.async:
-                tmp_res = self.overlord_obj.local.utils.async_poll(tmp_res,None)
-            
-            for minion_name,minion_value in tmp_res.iteritems():
-                if results.has_key(minion_name) and minion_value:
-                    results[minion_name].append(minion_value)
-                elif minion_value:
-                    results[minion_name]=[minion_value]
-                    
-        
-        print  pprint.pformat(results)
-        
 
-    def _get_modules(self):
+        host_modules = self._get_host_grep_modules(self.server_spec)
+        results = {}
+ 
+        # We could do this across hosts or across modules. Not sure
+        # which is better, this is across hosts (aka, walk across the
+        # hosts, then ask all the module.grep methods to it, then on to
+        # next host
+
+        for host in host_modules.keys():
+            for module in host_modules[host]:
+                if self.options.verbose:
+                    print "Scanning module: %s on host: %s" %(module, host)
+                
+                tmp_res = self.overlord_obj.run(module,"grep",[self.word])
+            
+                if self.options.async:
+                    tmp_res = self.overlord_obj.local.utils.async_poll(tmp_res,None)
+                #FIXME: I'm not sure what the best format for this is...
+                if tmp_res[host]:
+                    print "%s: %s" % (host, pprint.pformat(tmp_res[host]))
+
+    def _get_host_grep_modules(self, server_spec):
         """
         In cases when user doesnt supply the module list
         we have to consider that all of the modules are
@@ -115,10 +108,25 @@ class Grep(base_command.BaseCommand):
         
         #insetad of getting all of the modules we consider
         #that all of machines has the same modules ...
-        m = Minions("*")
+
+
+        host_modules = {}
+        #FIXME: we need to change this to create a dict of hostname->modules
+        # so we only call module.grep on systems that report it. things like
+        # virt/hardware aren't available on all guests
+        m = Minions(server_spec)
         hosts = m.get_all_hosts()
-        if hosts:
-            fc = Overlord(hosts[0], noglobs=True)
-            return fc.system.list_modules()
-        else:
-            raise Exception("No minions on system !")
+        if not hosts:
+            raise Exception("No minions on system!")
+        for host in hosts:
+            fc = Overlord(host, noglobs=True)
+            module_methods = fc.system.inventory()
+
+            for module in module_methods:
+                # searching for "grep"? meta
+                if "grep" in module_methods[module]:
+                    if not host_modules.has_key(host):
+                        host_modules[host] = []
+                    host_modules[host].append(module)
+
+        return host_modules
