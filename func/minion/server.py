@@ -180,9 +180,9 @@ class FuncApiMethod:
         """
 
         (t, v, tb) = sys.exc_info()
-        self.logger.info("Exception occured: %s" % t )
-        self.logger.info("Exception value: %s" % v)
-        self.logger.info("Exception Info:\n%s" % string.join(traceback.format_list(traceback.extract_tb(tb))))
+        self.logger.exception("Exception occured: %s" % t )
+        self.logger.exception("Exception value: %s" % v)
+        self.logger.exception("Exception Info:\n%s" % string.join(traceback.format_list(traceback.extract_tb(tb))))
 
     def __call__(self, *args):
 
