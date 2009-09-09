@@ -17,6 +17,9 @@
 
 # other modules
 import sys
+import traceback
+from gettext import gettext
+_ = gettext
 
 # our modules
 import sub_process
@@ -72,6 +75,9 @@ class HardwareModule(func_module.FuncModule):
         result = {self.info:[]}
         hw_info = self.info()
 
+        if hw_info = []:
+            return []
+
         for hw_k,hw_v in hw_info.iteritems():
             if hw_k.lower().find(word)!=-1:
                 result[self.info].append({hw_k:hw_v})
@@ -100,87 +106,94 @@ class HardwareModule(func_module.FuncModule):
         all of the devices.  If you don't care about them, set with_devices to
         False.
         """
-        return hw_info(with_devices)
 
-    def register_method_args(self):
-        """
-        Implementing the argument getter
-        """
+        # this will fail if smolt is not installed.  That's ok.  hal_info will
+        # still work.
 
-        return{
-                'hal_info':{
-                    'args':{},
-                    'description':'Returns the output of lshal'},
-                'inventory':{
-                    'args':{},
-                    'description':"The inventory part"
-                    },
-                'info':{
-                    'args':{
-                        'with_devices':{
-                            'type':'boolean',
-                            'optional':True,
-                            'default':True,
-                            'description':'All devices'
-                            }
-                        },
-                    'description':"A struct of hardware information"
-                    }
-                }
+        # hack: smolt is not installed in site-packages
+        try:
+            sys.path.append("/usr/share/smolt/client")
+            import smolt
+        except ImportError, e:
+            errmsg = _("Import error while loading smolt module. Smolt is probably not installed. This method is useless without it.")
+            self.logger.warning(errmsg)
+            self.logger.warning("%s" % traceback.format_exc())
+            # hmm, what to return... 
+            return []
 
-# =================================
+        hardware = smolt.Hardware()
+        host = hardware.host
 
-def hw_info(with_devices=True):
+        # NOTE: casting is needed because these are DBusStrings, not real strings
+        data = {
+            'os'              : str(host.os),
+            'defaultRunlevel' : str(host.defaultRunlevel),
+            'bogomips'        : str(host.bogomips),
+            'cpuVendor'       : str(host.cpuVendor),
+            'cpuModel'        : str(host.cpuModel),
+            'numCpus'         : str(host.numCpus),
+            'cpuSpeed'        : str(host.cpuSpeed),
+            'systemMemory'    : str(host.systemMemory),
+            'systemSwap'      : str(host.systemSwap),
+            'kernelVersion'   : str(host.kernelVersion),
+            'language'        : str(host.language),
+            'platform'        : str(host.platform),
+            'systemVendor'    : str(host.systemVendor),
+            'systemModel'     : str(host.systemModel),
+            'formfactor'      : str(host.formfactor),
+            'selinux_enabled' : str(host.selinux_enabled),
+            'selinux_enforce' : str(host.selinux_enforce)
+        }
 
-    # this may fail if smolt is not installed.  That's ok.  hal_info will
-    # still work.
+        # if no hardware info requested, just return the above bits
+        if not with_devices:
+            return data
 
-    # hack: smolt is not installed in site-packages
-    sys.path.append("/usr/share/smolt/client")
-    import smolt
+        collection = data["devices"] = []
 
-    hardware = smolt.Hardware()
-    host = hardware.host
+        for item in hardware.deviceIter():
 
-    # NOTE: casting is needed because these are DBusStrings, not real strings
-    data = {
-        'os'              : str(host.os),
-        'defaultRunlevel' : str(host.defaultRunlevel),
-        'bogomips'        : str(host.bogomips),
-        'cpuVendor'       : str(host.cpuVendor),
-        'cpuModel'        : str(host.cpuModel),
-        'numCpus'         : str(host.numCpus),
-        'cpuSpeed'        : str(host.cpuSpeed),
-        'systemMemory'    : str(host.systemMemory),
-        'systemSwap'      : str(host.systemSwap),
-        'kernelVersion'   : str(host.kernelVersion),
-        'language'        : str(host.language),
-        'platform'        : str(host.platform),
-        'systemVendor'    : str(host.systemVendor),
-        'systemModel'     : str(host.systemModel),
-        'formfactor'      : str(host.formfactor),
-        'selinux_enabled' : str(host.selinux_enabled),
-        'selinux_enforce' : str(host.selinux_enforce)
-    }
+            (VendorID,DeviceID,SubsysVendorID,SubsysDeviceID,Bus,Driver,Type,Description) = item
 
-    # if no hardware info requested, just return the above bits
-    if not with_devices:
+            collection.append({
+                "VendorID"       : str(VendorID),
+                "DeviceID"       : str(DeviceID),
+                "SubsysVendorID" : str(SubsysVendorID),
+                "Bus"            : str(Bus),
+                "Driver"         : str(Driver),
+                "Type"           : str(Type),
+                "Description"    : str(Description)
+            })
+
         return data
 
-    collection = data["devices"] = []
 
-    for item in hardware.deviceIter():
 
-        (VendorID,DeviceID,SubsysVendorID,SubsysDeviceID,Bus,Driver,Type,Description) = item
+        def register_method_args(self):
+            """
+            Implementing the argument getter
+            """
 
-        collection.append({
-            "VendorID"       : str(VendorID),
-            "DeviceID"       : str(DeviceID),
-            "SubsysVendorID" : str(SubsysVendorID),
-            "Bus"            : str(Bus),
-            "Driver"         : str(Driver),
-            "Type"           : str(Type),
-            "Description"    : str(Description)
-        })
+            return{
+                    'hal_info':{
+                        'args':{},
+                        'description':'Returns the output of lshal'},
+                    'inventory':{
+                        'args':{},
+                        'description':"The inventory part"
+                        },
+                    'info':{
+                        'args':{
+                            'with_devices':{
+                                'type':'boolean',
+                                'optional':True,
+                                'default':True,
+                                'description':'All devices'
+                                }
+                            },
+                        'description':"A struct of hardware information"
+                        }
+                    }
 
-    return data
+    # =================================
+
