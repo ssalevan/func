@@ -75,7 +75,7 @@ class HardwareModule(func_module.FuncModule):
         result = {self.info:[]}
         hw_info = self.info()
 
-        if hw_info = []:
+        if hw_info == []:
             return []
 
         for hw_k,hw_v in hw_info.iteritems():
