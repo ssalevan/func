@@ -41,7 +41,7 @@ class BaseFactModule(object):
                 if hasattr(fact_method,"tag"):
                     method_tag = getattr(fact_method,"tag")
                     if fact_callers.has_key(method_tag):
-                        self.logger.info("Facts has registered the tag : %s before, it was overriden"%method_tag)
+                        self.logger.warning("Facts has registered the tag : %s before, it was overriden"%method_tag)
                         if abort_on_conflict:
                             if not conflicts.has_key(method_tag):
                                 conflicts[method_tag] = []
