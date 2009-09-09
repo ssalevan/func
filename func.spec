@@ -12,7 +12,7 @@
 Summary: Remote management framework
 Name: func
 Version: 0.26
-Release: 1%{?dist}
+Release: 2%{?dist}
 Source0: %{name}-%{version}.tar.gz
 License: GPLv2+
 Group: Applications/System
@@ -24,8 +24,9 @@ Requires: python >= 2.3
 Requires: pyOpenSSL
 %endif
 Requires: %{python}-simplejson
-Requires: certmaster >= %{version}
+Requires: certmaster >= 0.25
 Requires: logrotate
+Requires: smolt
 BuildRequires: %{python}-devel
 %if %is_suse
 BuildRequires: gettext-devel
@@ -173,6 +174,10 @@ fi
 
 
 %changelog
+* Wed Sep 9 2009 Adrian Likins <alikins@redhat.com> - 0.26-1
+- require smolt (should be there on most stuff we support, and
+  hardware module is lame without it)
+
 * Thu Aug 26 2009 Adrian Likins <alikins@redhat.com> - 0.26-1
 - rev
 
