@@ -25,5 +25,9 @@ class InvalidMethodException(FuncException):
 
 class AccessToMethodDenied(FuncException):
     pass
+
+
+class ModuleNotFoundException(FuncException):
+    pass
     
 # FIXME: more sub-exceptions maybe
