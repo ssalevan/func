@@ -16,12 +16,13 @@
 import distutils.sysconfig
 import os
 import sys
+import traceback
 import inspect
 from gettext import gettext
 _ = gettext
 
-from func import logger
 
+from func import logger
 
 from inspect import isclass
 from func.minion.modules import func_module
@@ -105,13 +106,15 @@ def load_modules(path='func/minion/modules/', main_class=func_module.FuncModule,
 
         except ImportError, e:
             # A module that raises an ImportError is (for now) simply not loaded.
-            errmsg = _("Could not load %s module: %s")
+            errmsg = _("Import error while loading %s module: %s")
             log.warning(errmsg % (mod_imp_name, e))
+            log.warning("%s" % traceback.format_exc())
             bad_mods[mod_imp_name] = True
             continue
         except:
             errmsg = _("Could not load %s module")
             log.warning(errmsg % (mod_imp_name))
+            log.warning("%s" % traceback.format_exc())
             bad_mods[mod_imp_name] = True
             continue
 
