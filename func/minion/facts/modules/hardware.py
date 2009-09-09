@@ -1,5 +1,7 @@
 import fact_module
 import sys
+import traceback
+
 class HardwareFacts(fact_module.BaseFactModule):
     """
     Will give some basic info abouut hardware things
@@ -9,8 +11,16 @@ class HardwareFacts(fact_module.BaseFactModule):
 
     def __init__(self):
         super(HardwareFacts,self).__init__()
-        sys.path.append("/usr/share/smolt/client")
-        import smolt
+        try:
+            sys.path.append("/usr/share/smolt/client")
+            import smolt
+        except ImportError, e:
+            errmsg = "Import error while loading smolt for the hardware facts module. Smolt is probably not installed. This module is useless without it."
+            self.logger.warning(errmsg)
+            self.logger.warning("%s" % traceback.format_exc())
+            # hmm, what to return... 
+            return 
+
         hardware = smolt.Hardware()
         self.host = hardware.host
 
