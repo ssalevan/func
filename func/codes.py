@@ -23,4 +23,8 @@ class FuncException(exceptions.Exception):
 class InvalidMethodException(FuncException):
     pass
 
+class ModuleNotFoundException(FuncException):
+    pass
+
+
 # FIXME: more sub-exceptions maybe

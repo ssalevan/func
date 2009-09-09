@@ -88,6 +88,7 @@ class FuncModule(object):
             "module_api_version" : self.__module_api_version,
             "module_description" : self.__module_description,
             "list_methods"       : self.__list_methods,
+            "grep"               : self.grep,
             "get_method_args"    : self.__get_method_args,
         }
         self.__init_options()

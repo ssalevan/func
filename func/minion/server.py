@@ -152,9 +152,12 @@ class XmlRpcInterface(object):
 
         if method in self.handlers:
             return FuncApiMethod(self.logger, method, self.handlers[method])
-
         else:
-            self.logger.info("Unhandled method call for method: %s " % method)
+            module_name = string.join(method.split('.')[:-1], '.')
+            if module_name not in self.modules:
+                self.logger.exception("method %s called but %s module is not available" % (method, module_name))
+                raise codes.ModuleNotFoundException
+            self.logger.exception("Unhandled method call for method: %s " % method)
             raise codes.InvalidMethodException
 
 
