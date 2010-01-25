@@ -302,7 +302,7 @@ class Overlord(object):
             try:
                 mapstream = file(self.mapfile, 'r').read()
                 self.minionmap = yaml.load(mapstream).next()
-            except e:
+            except:
                 sys.stderr.write("mapfile load failed, switching delegation off")
                 self.delegate = False
     
