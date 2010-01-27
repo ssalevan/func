@@ -31,7 +31,10 @@ def convertImplicit(val):
         unescapedStr = eval (val)
         return unescapedStr
     if matchTime.match(val):
-        return timestamp(val)
+        try:
+            return timestamp(val)
+        except: #sometimes things that look like timestamps are not
+            pass #so let's ensure that something gets returned
     if INT_REGEX.match(val):
         return int(cleanseNumber(val))
     if OCTAL_REGEX.match(val):

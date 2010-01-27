@@ -299,7 +299,7 @@ class Overlord(object):
                 mapstream = file(self.mapfile, 'r').read()
                 self.minionmap = yaml.load(mapstream).next()
             except:
-                sys.stderr.write("mapfile load failed, switching delegation off")
+                sys.stderr.write("mapfile load failed, switching delegation off\n")
                 self.delegate = False
 
         self.minions_class = Minions(self.server_spec, 
@@ -307,7 +307,7 @@ class Overlord(object):
             delegate=self.delegate, minionmap=self.minionmap)
         self.minions = self.minions_class.get_urls()
         if len(self.minions) == 0 and len(dtools.match_glob_in_tree(self.server_spec, self.minionmap)) == 0:
-            raise Func_Client_Exception, 'Can\'t find any minions matching \"%s\". ' % self.server_spec
+            raise Func_Client_Exception, 'Can\'t find any minions matching \"%s\".' % self.server_spec
         
         if init_ssl:
             self.setup_ssl()
