@@ -287,16 +287,12 @@ class Overlord(object):
         if async is None:
             self.async = False
 
-        self.delegate    = delegate
-        self.mapfile     = mapfile
-        
         #overlord_query stuff
         self.overlord_query = OverlordQuery()
 
-        self.minions_class = Minions(self.server_spec, port=self.port, noglobs=self.noglobs, verbose=self.verbose,exclude_spec=self.exclude_spec)
-        self.minions = self.minions_class.get_urls()
-        if len(self.minions) == 0:
-            raise Func_Client_Exception, 'Can\'t find any minions matching \"%s\". ' % self.server_spec
+        self.delegate    = delegate
+        self.mapfile     = mapfile
+        self.minionmap   = {}
         
         if self.delegate:
             try:
@@ -305,7 +301,14 @@ class Overlord(object):
             except:
                 sys.stderr.write("mapfile load failed, switching delegation off")
                 self.delegate = False
-    
+
+        self.minions_class = Minions(self.server_spec, 
+            port=self.port, noglobs=self.noglobs, verbose=self.verbose,exclude_spec=self.exclude_spec,
+            delegate=self.delegate, minionmap=self.minionmap)
+        self.minions = self.minions_class.get_urls()
+        if len(self.minions) == 0 and len(dtools.match_glob_in_tree(self.server_spec, self.minionmap)) == 0:
+            raise Func_Client_Exception, 'Can\'t find any minions matching \"%s\". ' % self.server_spec
+        
         if init_ssl:
             self.setup_ssl()
 
@@ -544,7 +547,8 @@ class Overlord(object):
         #Next, we run everything that can be run directly beneath this overlord
         #Why do we do this after delegation calls?  Imagine what happens when
         #reboot is called...
-        directhash.update(self.run_direct(module,method,args,nforks))
+        if len(self.minions) > 0:
+            directhash.update(self.run_direct(module,method,args,nforks))
         
         #poll async results if we've async turned on
         if self.async:
@@ -682,7 +686,6 @@ class Overlord(object):
             if self.nforks > 1 or self.async:
                 # using forkbomb module to distribute job over multiple threads
                 if not self.async:
-                   
                     results = forkbomb.batch_run(minionurls, process_server, nforks)
                 else:
                     minion_info =dict(spec=spec,module=module,method=method)
