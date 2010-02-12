@@ -68,10 +68,17 @@ class RpmModule(func_module.FuncModule):
         import yum
         from re import split
         ts = rpm.TransactionSet()
-        mi = (ts.dbMatch() if pattern == '' else self.glob(pattern))
+        if pattern == '':
+            mi = ts.dbMatch()
+        else:
+            mi = self.glob(pattern))
         results = []
         for hdr in mi:
-            name = hdr['name'] if pattern == '' else split("\s",hdr)[0]
+            if pattern == '':
+                name = hdr['name']
+            else:
+                name = split("\s",hdr)[0]
+                
             if flatten:                
                 yb = yum.YumBase()
                 pkgs = yb.rpmdb.searchNevra(name)
