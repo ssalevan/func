@@ -71,7 +71,7 @@ class RpmModule(func_module.FuncModule):
         if pattern == '':
             mi = ts.dbMatch()
         else:
-            mi = self.glob(pattern))
+            mi = self.glob(pattern)
         results = []
         for hdr in mi:
             if pattern == '':
