@@ -29,10 +29,18 @@ class FuncdConfig(BaseConfig):
     minion_name = Option('')
     
     method_log_dir = Option("/var/log/func/methods/")
+    ca_file = Option('')
+    cert_file = Option('')
+    key_file = Option('')
 
 class OverlordConfig(BaseConfig):
     socket_timeout = FloatOption(0)
     backend = Option('conf')
     group_db = Option('')
-
+    key_file = Option('')
+    cert_file = Option('')
+    ca_file = Option('')
+    puppet_minions = BoolOption(False)
+    puppet_inventory = Option('/var/lib/puppet/ssl/ca/inventory.txt')
+    puppet_crl = Option('/var/lib/puppet/ssl/ca/ca_crl.pem')
 
