@@ -100,6 +100,9 @@ class XmlRpcInterface(object):
         methods.sort()
         return methods
     
+    def load_module(self, name):
+        """FIXME load a module and set it up on the running xmlrpc instance"""
+        pass
     
     import func.minion.modules.func_module as fm
     @fm.findout
@@ -243,13 +246,23 @@ class FuncSSLXMLRPCServer(AuthedXMLRPCServer.AuthedSSLXMLRPCServer,
 
         XmlRpcInterface.__init__(self)
         hn = func_utils.get_hostname_by_route()
-
-        self.key = "%s/%s.pem" % (self.cm_config.cert_dir, hn)
-        self.cert = "%s/%s.cert" % (self.cm_config.cert_dir, hn)
-        self.ca = "%s/ca.cert" % self.cm_config.cert_dir
+        
+        if self.config.key_file != '':
+            self.key = self.config.key_file
+        else:
+            self.key = "%s/%s.pem" % (self.cm_config.cert_dir, hn)            
+        
+        if self.config.cert_file != '':
+            self.cert = self.config.cert_file
+        else:
+            self.cert = "%s/%s.cert" % (self.cm_config.cert_dir, hn)
+        if self.config.ca_file != '':
+            self.ca = self.config.ca_file
+        else:
+            self.ca = "%s/ca.cert" % self.cm_config.cert_dir
+        
         
         self._our_ca = certs.retrieve_cert_from_file(self.ca)
-
         self.acls = acls_mod.Acls(config=self.config)
         
         AuthedXMLRPCServer.AuthedSSLXMLRPCServer.__init__(self, args,
@@ -358,8 +371,10 @@ def main(argv):
         print "serving...\n"
 
     try:
-        hn = futils.get_hostname_by_route()
-        requester.request_cert(hn)
+        config = read_config("/etc/func/minion.conf", FuncdConfig)
+        if config.use_certmaster:
+            hn = futils.get_hostname_by_route()
+            requester.request_cert(hn)
         serve()
     except codes.FuncException, e:
         print >> sys.stderr, 'error: %s' % e

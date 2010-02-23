@@ -29,6 +29,7 @@ class FuncdConfig(BaseConfig):
     minion_name = Option('')
     
     method_log_dir = Option("/var/log/func/methods/")
+    use_certmaster = BoolOption(True)
     ca_file = Option('')
     cert_file = Option('')
     key_file = Option('')
