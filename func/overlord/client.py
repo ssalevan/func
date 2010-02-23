@@ -496,6 +496,14 @@ class Overlord(object):
           # certmaster key, cert, ca
           # funcd key, cert, ca
           # raise FuncClientError
+        
+        if not client_key and self.overlord_config.key_file != '':
+            client_key = self.overlord_config.key_file
+        if not client_cert and self.overlord_config.cert_file != '':
+            client_cert = self.overlord_config.cert_file
+        if not ca and self.overlord_config.ca_file != '':
+            ca = self.overlord_config.ca_file
+            
         ol_key = '%s/certmaster.key' % self.cm_config.cadir
         ol_crt = '%s/certmaster.crt' % self.cm_config.cadir
         myname = func_utils.get_hostname_by_route()
