@@ -62,21 +62,21 @@ class DelegationModule(func_module.FuncModule):
                     result_dict.update(delegation_results)
                 else:
                     result_dict.update(delegation_results[group])
-        
-        #run direct calls
-        for minion in single_paths:
-            overlord = fc.Overlord(minion, 
-                                   async=async,
-                                   nforks=nforks)
-            overlord_module = getattr(overlord,module)
-            results = getattr(overlord_module,method)(*args[:])
-            if async:
-                job_id_list.append([overlord,
-                                    results,
-                                    minion,
-                                    False])
-            else:
-                result_dict.update(results)
+
+        # Concat all minions to a server_spec in order to make use of forks
+        minion = ";".join(single_paths)
+        overlord = fc.Overlord(minion, 
+                               async=async,
+                               nforks=nforks)
+        overlord_module = getattr(overlord,module)
+        results = getattr(overlord_module,method)(*args[:])
+        if async:
+            job_id_list.append([overlord,
+                                results,
+                                minion,
+                                False])
+        else:
+            result_dict.update(results)
         
         #poll async calls
         while len(job_id_list) > 0:
