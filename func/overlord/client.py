@@ -686,10 +686,10 @@ class Overlord(object):
             if self.nforks > 1 or self.async:
                 # using forkbomb module to distribute job over multiple threads
                 if not self.async:
-                    results = forkbomb.batch_run(minionurls, process_server, nforks)
+                    results = forkbomb.batch_run(minionurls, process_server, self.nforks)
                 else:
                     minion_info =dict(spec=spec,module=module,method=method)
-                    results = jobthing.batch_run(minionurls, process_server,nforks,**minion_info)
+                    results = jobthing.batch_run(minionurls, process_server, self.nforks, **minion_info)
             else:
                 # no need to go through the fork code, we can do this directly
                 results = {}

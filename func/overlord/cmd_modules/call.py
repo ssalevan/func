@@ -177,7 +177,7 @@ class Call(base_command.BaseCommand):
         self.parser.add_option("-b", "--basic", dest="basic",
                                help="output return data with minimal, basic formating",
                                action="store_true")
-        self.parser.add_option("-f", "--forks", dest="forks",
+        self.parser.add_option("-f", "--forks", dest="forks", type="int",
                                help="how many parallel processes?  (default 1)",
                                default=self.forks)
         self.parser.add_option("-a", "--async", dest="async",
