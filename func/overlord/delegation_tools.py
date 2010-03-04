@@ -123,11 +123,12 @@ def match_glob_in_tree(pattern, minionmap):
     """
     
     matched = []
-    for k,v in minionmap.iteritems():
-        for result in match_glob_in_tree(pattern, v):
-            matched.append(result)
-        if fnmatch.fnmatch(k,pattern):
-            matched.append(k)
+    for p in pattern.split(";"):
+        for k,v in minionmap.iteritems():
+            for result in match_glob_in_tree(p, v):
+                matched.append(result)
+            if fnmatch.fnmatch(k,p):
+                matched.append(k)
     return matched
 
 def minion_exists_under_node(minion, minionmap):
