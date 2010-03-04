@@ -39,6 +39,12 @@ class MapperTool(object):
                      dest="append",
                      action="store_true",
                      help="append new map to current map")
+        p.add_option("-t", "--timeout",
+                     dest="timeout",
+                     action="store",
+                     type="int",
+                     default=60,
+                     help="timeout to wait for reply from minions, increase for larger func installations.")
         p.add_option("-o", "--onlyalive",
                      dest="only_alive",
                      action="store_true",
@@ -60,7 +66,9 @@ class MapperTool(object):
         
     def build_map(self):
         
-        minion_hash = func_client.Overlord("*").overlord.map_minions(self.options.only_alive==True)
+        fc = func_client.Overlord("*")
+        fc.timeout = self.options.timeout
+        minion_hash = fc.overlord.map_minions(self.options.only_alive==True)
         
         for minion in minion_hash.keys(): #clean hash of any top-level errors
             if utils.is_error(minion_hash[minion]):
