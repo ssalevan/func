@@ -54,9 +54,12 @@ def group_paths(ungrouped_list):
     
     single_paths = [path[0] for path in ungrouped_list if len(path) == 1]
     non_single_paths = [path for path in ungrouped_list if len(path) > 1]
-    path_group = dict([(key,[path[1:len(path)] for path in list(gen)]) 
-                       for key, gen in groupby(non_single_paths,
-                                               key=lambda x:x[0])])
+
+    path_group = dict()
+    for p in non_single_paths:
+        if p[0] not in path_group:
+             path_group[p[0]] = list()
+        path_group[p[0]].append(p[1:])
     
     return (single_paths,path_group)
                                           
