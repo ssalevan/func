@@ -126,7 +126,8 @@ def match_glob_in_tree(pattern, minionmap):
     """
     
     matched = []
-    for p in pattern.split(";"):
+    split_pattern = [p.strip() for p in pattern.split(";")]
+    for p in split_pattern:
         for k,v in minionmap.iteritems():
             for result in match_glob_in_tree(p, v):
                 matched.append(result)
