@@ -168,11 +168,10 @@ def get_all_paths(minion, minionmap):
     #module, please, please do so. - ssalevan 7/2/08
     seq_list = []
     
-    if minion_exists_under_node(minion, minionmap):
-        return [[minion]] #minion found, terminate branch
-    
     if minionmap == {}:
-        return [[]] #no minion found, terminate branch
+        if minion_exists_under_node(minion, minionmap):
+            return [[minion]] # directly reachable minion found, terminate branch
+        return [[]] # no minion found, terminate branch
         
     for k,v in minionmap.iteritems():
         branch_list = []
