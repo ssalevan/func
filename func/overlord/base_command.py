@@ -33,13 +33,16 @@ class BaseCommand(command.Command):
     forks=1
     delegate=False
     mapfile=DEFAULT_MAPLOC
-    
+
     # temporary work around FIXME 
     # we really need a way to store what port each minion is
     # listening on, though this is probably workable for most
     # cases. Though it should probably be a different config
     # file, since FuncdConfig is for the minion server, not
     def getOverlord(self):
+        ol_config = None
+        if self.parentCommand.conffile:
+            ol_config = read_config(self.parentCommand.conffile, commonconfig.OverlordConfig)
         self.overlord_obj = client.Overlord(self.server_spec,
                                             interactive=self.interactive,
                                             verbose=self.verbose,
@@ -48,6 +51,7 @@ class BaseCommand(command.Command):
                                             delegate=self.delegate,
                                             mapfile=self.mapfile,
                                             timeout=self.parentCommand.socket_timeout,
-                                            exclude_spec=self.parentCommand.exclude_spec)
+                                            exclude_spec=self.parentCommand.exclude_spec,
+                                            config=ol_config)
 
 
