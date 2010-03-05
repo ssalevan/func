@@ -307,18 +307,28 @@ class PuppetMinions(Minions):
         return tmp_hosts,tmp_certs
 
     def _return_revoked_serials(self, crlfile):
-        call = '/usr/bin/openssl crl -text -noout -in %s' % crlfile
-        call = shlex.split(call)
-        serials = []
-        (res,err) = subprocess.Popen(call, stdout=subprocess.PIPE).communicate()
-        for line in res.split('\n'):
-            if line.find('Serial Number:') == -1:
-                continue
-            (crap, serial) = line.split(':')
-            serial = serial.strip()
-            serial = int(serial, 16)
-            serials.append(serial)  
-        return serials
+        try:
+            serials = []
+            crltext = open(crlfile, 'r').read()
+            from OpenSSL import crypto
+            crl = crypto.load_crl(crypto.FILETYPE_PEM, crltext)
+            revs = crl.get_revoked()
+            for revoked in revs:
+                serials.append(str(revoked.get_serial()))
+            return serials
+        except (ImportError, AttributeError), e:
+            call = '/usr/bin/openssl crl -text -noout -in %s' % crlfile
+            call = shlex.split(call)
+            serials = []
+            (res,err) = subprocess.Popen(call, stdout=subprocess.PIPE).communicate()
+            for line in res.split('\n'):
+                if line.find('Serial Number:') == -1:
+                    continue
+                (crap, serial) = line.split(':')
+                serial = serial.strip()
+                serial = int(serial, 16)
+                serials.append(serial)  
+            return serials
 
 
 # does the hostnamegoo actually expand to anything?
