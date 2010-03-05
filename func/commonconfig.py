@@ -36,6 +36,7 @@ class FuncdConfig(BaseConfig):
 
 class OverlordConfig(BaseConfig):
     socket_timeout = FloatOption(0)
+    listen_port = IntOption('51234')
     backend = Option('conf')
     group_db = Option('')
     key_file = Option('')
