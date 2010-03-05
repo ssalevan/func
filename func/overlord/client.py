@@ -107,7 +107,9 @@ class Minions(object):
         self.exclude_spec = exclude_spec
 
         self.cm_config = read_config(CONFIG_FILE, CMConfig)
-        self.group_class = groups.Groups(backend=groups_backend,**kwargs)
+        self.group_class = groups.Groups(backend=groups_backend,
+                                    get_hosts_for_spec=self.get_hosts_for_spec,
+                                    **kwargs)
         
         #lets make them sets so we dont loop again and again
         self.all_hosts = set()
@@ -203,19 +205,28 @@ class Minions(object):
         #we keep it all the time as a set so 
         return list(self.all_hosts)
 
-    def get_urls(self):
-        self._get_new_hosts()
-        self._get_all_hosts()
-        for host in self.all_hosts:
+    def get_urls(self, hosts=[]):
+        if not hosts:
+            self._get_new_hosts()
+            self._get_all_hosts()
+            hosts = self.all_hosts
+            results = self.all_urls
+        else:
+            results = []
+            
+        for host in hosts:
             if not self.just_fqdns:
-                self.all_urls.append("https://%s:%s" % (host, self.port))
+                host_res = "https://%s:%s" % (host, self.port)
             else:
-                self.all_urls.append(host)  
+                host_res = host
+
+            if not host_res in results: # this might get slow if there are thousands of hosts
+                results.append(host_res)
         
-        if self.verbose and len(self.all_urls) == 0:
+        if self.verbose and len(results) == 0:
             sys.stderr.write("no hosts matched\n")
 
-        return self.all_urls
+        return results
 
     # FIXME: hmm, dont like this bit of the api... -al;
     def is_minion(self):
@@ -225,17 +236,11 @@ class Minions(object):
         return False
 
 
-class PuppetMinions(object):
-    def __init__(self, spec, port=51234, 
+class PuppetMinions(Minions):
+    def __init__(self, spec, port=51234,
                  noglobs=None, verbose=None,
                  just_fqdns=False, groups_backend="conf",
                  delegate=False, minionmap={},exclude_spec=None,**kwargs):
-
-        # open inventory.txt
-        # for each CN (uniqued) in there
-        # open the ca_crl.pem file  - if the serial of the CN shows up in there
-        # remove those from the list of hosts
-        
         self.spec = spec
         self.port = port
         self.noglobs = noglobs
@@ -247,35 +252,16 @@ class PuppetMinions(object):
 
         self.cm_config = read_config(CONFIG_FILE, CMConfig)
         self.overlord_config = read_config(OVERLORD_CONFIG_FILE, OverlordConfig)
-        self.cm_config = read_config(CONFIG_FILE, CMConfig)        
-        self.group_class = groups.Groups(backend=groups_backend,**kwargs)
-        
+
+        self.group_class = groups.Groups(backend=groups_backend,
+                                   get_hosts_for_spec=self.get_hosts_for_spec,
+                                   **kwargs)
         #lets make them sets so we dont loop again and again
         self.all_hosts = set()
         self.all_certs = set()
         self.all_urls = []
 
-    def _get_new_hosts(self):
-        self.new_hosts = self._get_group_hosts(self.spec)
-        return self.new_hosts
 
-    def _get_group_hosts(self,spec):
-        return self.group_class.get_hosts_by_group_glob(spec)
-
-    def _get_hosts_for_specs(self,seperate_gloobs):
-        """
-        Gets the hosts and certs for proper spec
-        """
-        tmp_hosts = set()
-        tmp_certs = set()
-        for each_gloob in seperate_gloobs:
-            if each_gloob.startswith('@'):
-                continue
-            h,c = self._get_hosts_for_spec(each_gloob)
-            tmp_hosts = tmp_hosts.union(h)
-            tmp_certs = tmp_certs.union(c)
-
-        return tmp_hosts,tmp_certs
 
     def _get_hosts_for_spec(self,each_gloob):
         """
@@ -334,67 +320,6 @@ class PuppetMinions(object):
             serials.append(serial)  
         return serials
 
-    def get_hosts_for_spec(self,spec):
-        """
-        Be careful when editting that method it will be used
-        also by groups api to pull machines to have better
-        glob control there ...
-        """
-        return self._get_hosts_for_spec(spec)[0]
-
-
-
-    def _get_all_hosts(self):
-        """
-        Gets hosts that are included and excluded by user
-        a better orm like spec so user may say 
-        func "*" --exclude "www.*;@mygroup" ...
-        """
-        included_part = self._get_hosts_for_specs(self.spec.split(";")+self.new_hosts)
-        self.all_certs=self.all_certs.union(included_part[1])
-        self.all_hosts=self.all_hosts.union(included_part[0])
-        #excluded ones
-        if self.exclude_spec:
-            #get first groups ypu dont want to run :
-            group_exclude = self._get_group_hosts(self.exclude_spec)
-            excluded_part = self._get_hosts_for_specs(self.exclude_spec.split(";")+group_exclude)
-            self.all_certs = self.all_certs.difference(excluded_part[1])
-            self.all_hosts = self.all_hosts.difference(excluded_part[0])
-
-
-
-    def get_all_hosts(self):
-        """
-        Get current host list
-        """
-        self._get_new_hosts()
-        self._get_all_hosts()
-
-        #we keep it all the time as a set so 
-        return list(self.all_hosts)
-
-    def get_urls(self):
-        self._get_new_hosts()
-        self._get_all_hosts()
-        for host in self.all_hosts:
-            if not self.just_fqdns:
-                self.all_urls.append("https://%s:%s" % (host, self.port))
-            else:
-                self.all_urls.append(host)  
-        
-        if self.verbose and len(self.all_urls) == 0:
-            sys.stderr.write("no hosts matched\n")
-
-        return self.all_urls
-
-    # FIXME: hmm, dont like this bit of the api... -al;
-    def is_minion(self):
-        self.get_urls()
-        if len(self.all_urls) > 0:
-            return True
-        return False
-
-
 
 # does the hostnamegoo actually expand to anything?
 def is_minion(minion_string):
@@ -426,18 +351,17 @@ class Overlord(object):
         @config -- optional config object
         """
 
-        self.config  = read_config(FUNCD_CONFIG_FILE, FuncdConfig)
+        self.cm_config = read_config(CONFIG_FILE, CMConfig)
+        self.funcd_config  = read_config(FUNCD_CONFIG_FILE, FuncdConfig)
+        self.config = read_config(OVERLORD_CONFIG_FILE, OverlordConfig)
+        if config:
+            self.config = config
 
-        self.cm_config = config
-        if config is None:
-            self.cm_config = read_config(CONFIG_FILE, CMConfig)
-
-        self.overlord_config = read_config(OVERLORD_CONFIG_FILE, OverlordConfig)
+        self.overlord_config = self.config # for backward compat 
 
 
         self.server_spec = server_spec
         self.exclude_spec = exclude_spec
-        # we could make this settable in overlord.conf as well
         self.port        = port
         if self.config.listen_port:
             self.port    = self.config.listen_port
@@ -449,8 +373,8 @@ class Overlord(object):
         # the default
         self.timeout = DEFAULT_TIMEOUT
         # the config file
-        if self.overlord_config.socket_timeout != 0.0:
-            self.timeout = self.overlord_config.socket_timeout
+        if self.config.socket_timeout != 0.0:
+            self.timeout = self.config.socket_timeout
         # commandline
         if timeout:
             self.timeout = timeout
@@ -466,15 +390,16 @@ class Overlord(object):
         
         #overlord_query stuff
         self.overlord_query = OverlordQuery()
-        if self.overlord_config.puppet_minions:
-            mc = PuppetMinions
+        if self.config.puppet_minions:
+            self._mc = PuppetMinions
         else:
-            mc = Minions
+            self._mc = Minions
             
-        self.minions_class = mc(self.server_spec, port=self.port, 
+        self.minions_class = self._mc(self.server_spec, port=self.port, 
                                 noglobs=self.noglobs, verbose=self.verbose, 
                                 exclude_spec=self.exclude_spec)
         self.minions = self.minions_class.get_urls()
+        
         if len(self.minions) == 0:
             raise Func_Client_Exception, 'Can\'t find any minions matching \"%s\". ' % self.server_spec
         
@@ -497,12 +422,12 @@ class Overlord(object):
           # funcd key, cert, ca
           # raise FuncClientError
         
-        if not client_key and self.overlord_config.key_file != '':
-            client_key = self.overlord_config.key_file
-        if not client_cert and self.overlord_config.cert_file != '':
-            client_cert = self.overlord_config.cert_file
-        if not ca and self.overlord_config.ca_file != '':
-            ca = self.overlord_config.ca_file
+        if not client_key and self.config.key_file != '':
+            client_key = self.config.key_file
+        if not client_cert and self.config.cert_file != '':
+            client_cert = self.config.cert_file
+        if not ca and self.config.ca_file != '':
+            ca = self.config.ca_file
             
         ol_key = '%s/certmaster.key' % self.cm_config.cadir
         ol_crt = '%s/certmaster.crt' % self.cm_config.cadir
@@ -798,7 +723,6 @@ class Overlord(object):
 
         
         def process_server(bucketnumber, buckets, server):
-            
             conn = sslclient.FuncServer(server, self.key, self.cert, self.ca, self.timeout)
             # conn = xmlrpclib.ServerProxy(server)
 
@@ -856,13 +780,14 @@ class Overlord(object):
         if kwargs.has_key('call_path'): #we're delegating if this key exists
             delegation_path = kwargs['call_path']
             spec = kwargs['suboverlord'] #the sub-overlord directly beneath this one
-            minionobj = Minions(spec, port=self.port, verbose=self.verbose)
+            minions_hosts = self.minions_class.get_hosts_for_spec(spec)
             use_delegate = True #signal to process_server to call delegate method
-            minionurls = minionobj.get_urls() #the single-item url list to make async
+            minionurls = minionobj.get_urls(hosts=minion_hosts) #the single-item url list to make async
                                               #tools such as jobthing/forkbomb happy
         else: #we're directly calling minions, so treat everything normally
             spec = self.server_spec
-            minionurls = self.minions
+            minionurls = self.minions_class.get_urls()
+
             #print "Minion_url is :",minionurls
             #print "Process server is :",process_server
         
@@ -870,7 +795,6 @@ class Overlord(object):
             if self.nforks > 1 or self.async:
                 # using forkbomb module to distribute job over multiple threads
                 if not self.async:
-                   
                     results = forkbomb.batch_run(minionurls, process_server, nforks)
                 else:
                     minion_info =dict(spec=spec,module=module,method=method)
@@ -882,10 +806,11 @@ class Overlord(object):
                     (nkey,nvalue) = process_server(0, 0, x)
                     results[nkey] = nvalue    
         else:
+            
             # globbing is not being used, but still need to make sure
             # URI is well formed.
 #            expanded = expand_servers(self.server_spec, port=self.port, noglobs=True, verbose=self.verbose)[0]
-            expanded_minions = Minions(spec, port=self.port, noglobs=True, verbose=self.verbose)
+            expanded_minions = self._mc(spec, port=self.port, noglobs=True, verbose=self.verbose)
             minions = expanded_minions.get_urls()[0]
             results = process_server(0, 0, minions)
         
