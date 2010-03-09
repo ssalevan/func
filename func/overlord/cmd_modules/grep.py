@@ -15,6 +15,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 import pprint
 import sys
+import types
 
 from func.overlord import client
 from func.overlord import base_command
@@ -136,8 +137,12 @@ class Grep(base_command.BaseCommand):
             module_methods = self.overlord_obj.system.inventory()
 
             for hn in module_methods:
+               if type(module_methods[hn]) != types.DictType:
+                   sys.stderr.write("Error on host %s: %s" % (hn, ' '.join(module_methods[hn])))
+                   continue
+
                 for module in module_methods[hn]:
-                # searching for "grep"? meta
+                    # searching for "grep"? meta
                     if "grep" in module_methods[hn][module]:
                         if not host_modules.has_key(host):
                             host_modules[host] = []
