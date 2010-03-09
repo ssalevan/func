@@ -107,6 +107,7 @@ class Minions(object):
         self.exclude_spec = exclude_spec
 
         self.cm_config = read_config(CONFIG_FILE, CMConfig)
+        self.overlord_config = read_config(OVERLORD_CONFIG_FILE, OverlordConfig)        
         self.group_class = groups.Groups(backend=groups_backend,
                                     get_hosts_for_spec=self.get_hosts_for_spec,
                                     **kwargs)
@@ -115,7 +116,8 @@ class Minions(object):
         self.all_hosts = set()
         self.all_certs = set()
         self.all_urls = []
-
+        self._downed_hosts = []
+        
     def _get_new_hosts(self):
         self.new_hosts = self._get_group_hosts(self.spec)
         return self.new_hosts
@@ -210,11 +212,14 @@ class Minions(object):
             self._get_new_hosts()
             self._get_all_hosts()
             hosts = self.all_hosts
-            results = self.all_urls
-        else:
-            results = []
-            
+        
+        results = []
+        
         for host in hosts:
+            if host in self.downed_hosts:
+                sys.stderr.write("%s excluded due to being listed in %s\n" % (host, self.overlord_config.host_down_list))
+                # FIXME maybe we should splat something to the logs?
+                continue
             if not self.just_fqdns:
                 host_res = "https://%s:%s" % (host, self.port)
             else:
@@ -235,33 +240,38 @@ class Minions(object):
             return True
         return False
 
+    def _get_downed_hosts(self):
+        """returns a list of minions which are known to not be up"""
+        if self._downed_hosts:
+            return self._downed_hosts
+            
+        hosts = []
+        if self.overlord_config.host_down_list and \
+                  os.path.exists(self.overlord_config.host_down_list):
+            fo = open(self.overlord_config.host_down_list, 'r')
+            for line in fo.readlines():
+                if re.match('\s*(#|$)', line):
+                    continue
+                hn = line.replace('\n','')
+                if hn not in hosts:
+                    hosts.append(hn)
+            fo.close()
+        
+        self._downed_hosts = hosts
+        
+        return self._downed_hosts
+    
+    downed_hosts = property(fget=lambda self: self._get_downed_hosts())
 
 class PuppetMinions(Minions):
     def __init__(self, spec, port=51234,
                  noglobs=None, verbose=None,
                  just_fqdns=False, groups_backend="conf",
                  delegate=False, minionmap={},exclude_spec=None,**kwargs):
-        self.spec = spec
-        self.port = port
-        self.noglobs = noglobs
-        self.verbose = verbose
-        self.just_fqdns = just_fqdns
-        self.delegate = delegate
-        self.minionmap = minionmap
-        self.exclude_spec = exclude_spec
-
-        self.cm_config = read_config(CONFIG_FILE, CMConfig)
-        self.overlord_config = read_config(OVERLORD_CONFIG_FILE, OverlordConfig)
-
-        self.group_class = groups.Groups(backend=groups_backend,
-                                   get_hosts_for_spec=self.get_hosts_for_spec,
-                                   **kwargs)
-        #lets make them sets so we dont loop again and again
-        self.all_hosts = set()
-        self.all_certs = set()
-        self.all_urls = []
-
-
+        Minions.__init__(self, spec, port=port, noglobs=noglobs, verbose=verbose,
+                        just_fqdns=just_fqdns, groups_backend=groups_backend,
+                        delegate=delegate, minionmap=minionmap, 
+                        exclude_spec=exclude_spec,**kwargs)
 
     def _get_hosts_for_spec(self,each_gloob):
         """
