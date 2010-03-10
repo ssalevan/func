@@ -44,6 +44,7 @@ class OverlordConfig(BaseConfig):
     ca_file = Option('')
     puppet_minions = BoolOption(False)
     puppet_inventory = Option('/var/lib/puppet/ssl/ca/inventory.txt')
+    puppet_signed_certs_dir = Option('/var/lib/puppet/ssl/ca/signed')
     puppet_crl = Option('/var/lib/puppet/ssl/ca/ca_crl.pem')
     host_down_list = Option('/var/lib/func/hosts_down.lst')
     

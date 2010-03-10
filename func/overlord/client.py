@@ -281,8 +281,6 @@ class PuppetMinions(Minions):
         tmp_certs = set()
         tmp_hosts = set()
         
-        # revoked certs
-        revoked_serials = self._return_revoked_serials(self.overlord_config.puppet_crl)
         # get all hosts
         if os.access(self.overlord_config.puppet_inventory, os.R_OK):
             fo = open(self.overlord_config.puppet_inventory, 'r')
@@ -293,8 +291,6 @@ class PuppetMinions(Minions):
                 if re.match('\s*(#|$)', line):
                     continue
                 (serial, before, after, cn) = line.split()
-                if int(serial, 16) in revoked_serials:
-                    continue
                 before = time.strftime('%s', time.strptime(before, time_format))
                 if now < int(before):
                     continue
@@ -308,8 +304,16 @@ class PuppetMinions(Minions):
                     if host_inv[hn] > serial:
                         continue
                 host_inv[hn] = serial
-
+            fo.close()
+            
+            # revoked certs
+            revoked_serials = self._return_revoked_serials(self.overlord_config.puppet_crl)
             for hostname in host_inv.keys():
+                if int(host_inv[hostname], 16) in revoked_serials:
+                    continue
+                pempath = '%s/%s.pem' % (self.overlord_config.puppet_signed_certs_dir, hostname)
+                if not os.path.exists(pempath):
+                    continue
                 if fnmatch.fnmatch(hostname, each_gloob):
                     tmp_hosts.add(hostname)
                     # don't return certs path - just hosts
