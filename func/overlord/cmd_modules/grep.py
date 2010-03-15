@@ -137,9 +137,9 @@ class Grep(base_command.BaseCommand):
             module_methods = self.overlord_obj.system.inventory()
 
             for hn in module_methods:
-               if type(module_methods[hn]) != types.DictType:
-                   sys.stderr.write("Error on host %s: %s" % (hn, ' '.join(module_methods[hn])))
-                   continue
+                if type(module_methods[hn]) != types.DictType:
+                    sys.stderr.write("Error on host %s: %s" % (hn, ' '.join(module_methods[hn])))
+                    continue
 
                 for module in module_methods[hn]:
                     # searching for "grep"? meta
