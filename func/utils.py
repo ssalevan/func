@@ -168,6 +168,34 @@ def should_log(args):
         return True
     return False
 
+def deep_base64(ds):
+    """
+    Run through an arbitrary datastructure of dicts / lists / tuples
+    to find all strings and base 64 encode/decode them with
+    xmlrpclib.Binary objects.
+    """
+    from xmlrpclib import Binary
+
+    if isinstance(ds, Binary):
+        return ds.data
+
+    if isinstance(ds, basestring):
+        return Binary(ds)
+
+    if isinstance(ds, list) or isinstance(ds, tuple):
+        cleaned = map(lambda x: deep_base64(x), ds)
+        if isinstance(ds, tuple):
+            cleaned = tuple(cleaned)
+        return cleaned
+
+    if isinstance(ds, dict):
+        cleaned = {}
+        for k,v in ds.iteritems():
+            cleaned[deep_base64(k)] = deep_base64(v)
+        return cleaned
+
+    return ds
+
 #################### PROGRESS BAR ##################################
 # The code below can be used for progress bar purposes as we will do
 #it is a combination of http://code.activestate.com/recipes/168639/ and

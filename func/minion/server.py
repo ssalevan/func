@@ -204,7 +204,14 @@ class FuncApiMethod:
             rc = utils.nice_exception(t,v,tb)
         self.logger.debug("Return code for %s: %s" % (self.__name, rc))
 
-        return rc
+        if self.__name == 'jobs.job_status':
+            # don't double-encode (which ultimately ends up being a no-op,
+            # since deep_base64(deep_base64(foo)) == foo
+            # the return value stored by jobthing is already encoded at this
+            # point
+            return rc
+        else:
+            return futils.deep_base64(rc)
 
 
 def serve():

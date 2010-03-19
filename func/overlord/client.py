@@ -785,7 +785,9 @@ class Overlord(object):
 
                 if self.interactive:
                     print retval
-                    
+
+                retval = func_utils.deep_base64(retval)
+
             except Exception, e:
                 (t, v, tb) = sys.exc_info()
                 retval = utils.nice_exception(t,v,tb)
