@@ -62,7 +62,6 @@ class FactsModule(func_module.FuncModule):
                 return method() 
         return {}
     
-    @func_module.findout
     def grep(self, word):
         """
         Get some info about facts
@@ -86,4 +85,5 @@ class FactsModule(func_module.FuncModule):
 
         #the final collected stuff here
         return result
+    grep = func_module.findout(grep)
         

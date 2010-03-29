@@ -108,13 +108,15 @@ def load_modules(path='func/minion/modules/', main_class=func_module.FuncModule,
             # A module that raises an ImportError is (for now) simply not loaded.
             errmsg = _("Import error while loading %s module: %s")
             log.warning(errmsg % (mod_imp_name, e))
-            log.warning("%s" % traceback.format_exc())
+            etype, value, tb = sys.exc_info()
+            log.warning(traceback.format_exception(etype, value, tb))
             bad_mods[mod_imp_name] = True
             continue
         except:
             errmsg = _("Could not load %s module")
             log.warning(errmsg % (mod_imp_name))
-            log.warning("%s" % traceback.format_exc())
+            etype, value, tb = sys.exc_info()
+            log.warning(traceback.format_exception(etype, value, tb))
             bad_mods[mod_imp_name] = True
             continue
 

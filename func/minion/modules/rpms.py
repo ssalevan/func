@@ -45,7 +45,6 @@ class RpmModule(func_module.FuncModule):
                 results.append([name, epoch, version, release, arch])
         return results
 
-    @func_module.findout
     def grep(self, word):
         """
         Grep some info from packages we got from
@@ -59,6 +58,7 @@ class RpmModule(func_module.FuncModule):
                 results[self.inventory].append(res)
         
         return results
+    grep = func_module.findout(grep)
 
     def verify(self, pattern='', flatten=True):
         """

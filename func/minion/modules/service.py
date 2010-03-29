@@ -55,7 +55,6 @@ class Service(func_module.FuncModule):
             "enabled" : self.get_enabled()
         }
 
-    @func_module.findout
     def grep(self,word):
         """
         Dig for some useful info in that module ...
@@ -77,6 +76,7 @@ class Service(func_module.FuncModule):
                 final_dict[self.get_running].append(e)
 
         return final_dict
+    grep = func_module.findout(grep)
         
 
 

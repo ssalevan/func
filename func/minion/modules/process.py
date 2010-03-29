@@ -224,7 +224,6 @@ class ProcessModule(func_module.FuncModule):
     def loadavg(self):
         return open("/proc/loadavg", "r").readline().strip().split(" ")
 
-    @func_module.findout
     def grep(self, word):
         """
         Some grep info about :
@@ -251,6 +250,7 @@ class ProcessModule(func_module.FuncModule):
         
         
         return results
+    grep = func_module.findout(grep)
     
 
     def register_method_args(self):

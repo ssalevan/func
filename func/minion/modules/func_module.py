@@ -44,7 +44,10 @@ def log_all(fn):
     
     #a hack for get_arg_methods
     wrapper.overriden_args = inspect.getargspec(fn)
-    wrapper.__name__ = fn.__name__
+    try:
+        wrapper.__name__ = fn.__name__
+    except:
+        wrapper._name_ = fn.__name__
     return wrapper
 
 

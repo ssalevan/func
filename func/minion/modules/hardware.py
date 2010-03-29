@@ -67,7 +67,6 @@ class HardwareModule(func_module.FuncModule):
             del data["bogomips"]
         return data
 
-    @func_module.findout
     def grep(self,word):
         """
         Find something in hardware info 
@@ -97,6 +96,7 @@ class HardwareModule(func_module.FuncModule):
         
         #get the final result
         return result
+    grep = func_module.findout(grep)
 
 
 

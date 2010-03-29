@@ -161,7 +161,10 @@ def get_fresh_method_instance(function_ref):
         except Exception,e:
             #something went wrong so we return the normal reference value
             return function_ref
-        return getattr(fresh_instance,function_ref.__name__)
+       	try:
+            return getattr(fresh_instance,function_ref.__name__)
+	except AttributeError:
+            return getattr(fresh_instance,function_ref._name_)
 
 def should_log(args):
     if args and type(args[len(args)-1]) == dict and args[len(args)-1].has_key('__logger__') and args[len(args)-1]['__logger__'] == True:

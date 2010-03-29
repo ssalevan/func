@@ -105,7 +105,6 @@ class XmlRpcInterface(object):
         pass
     
     import func.minion.modules.func_module as fm
-    @fm.findout
     def grep(self,word):
         """
         Finding the wanted word
@@ -128,6 +127,7 @@ class XmlRpcInterface(object):
                 return_dict[self.list_methods]=m
 
         return return_dict
+    grep = fm.findout(grep)
 
 
     def inventory(self):
