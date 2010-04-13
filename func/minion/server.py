@@ -331,7 +331,7 @@ class FuncSSLXMLRPCServer(AuthedXMLRPCServer.AuthedSSLXMLRPCServer,
         except:
             (t, v, tb) = sys.exc_info()
             rc = utils.nice_exception(t, v, tb)
-            return rc
+            return futils.deep_base64(rc)
 
     def auth_cb(self, request, client_address):
         peer_cert = request.get_peer_certificate()
