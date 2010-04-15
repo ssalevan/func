@@ -50,6 +50,8 @@ class Ping(base_command.BaseCommand):
         # to make things look more speedy.
 
         minion_set = client.Minions(self.server_spec, port=self.port)
+        if minion_set.overlord_config.puppet_minions:
+            minion_set = client.PuppetMinions(self.server_spec, port=self.port)
         servers = minion_set.get_all_hosts()
 
         for server in servers:
