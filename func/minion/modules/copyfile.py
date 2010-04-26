@@ -8,8 +8,19 @@
 # along with this program; if not, write to the Free Software
 # Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
+try:
+    import hashlib
+except ImportError:
+    # Python-2.4.z ... gah! (or even 2.3!)
+    import sha
+    class hashlib:
+        @staticmethod
+        def new(algo):
+            if algo == 'sha1':
+                return sha.new()
+            raise ValueError, "Bad checksum type"
 
-import sha
+
 import os
 import time
 import shutil
@@ -24,14 +35,14 @@ class CopyFile(func_module.FuncModule):
     description = "Allows for smart copying of a file."
 
     def _checksum_blob(self, blob):
-        thissum = sha.new()
+        thissum = hashlib.new('sha1')
         thissum.update(blob)
         return thissum.hexdigest()
                        
     def checksum(self, thing):
 
         CHUNK=2**16
-        thissum = sha.new()
+        thissum = hashlib.new('sha1')
         if os.path.exists(thing):
             fo = open(thing, 'r', CHUNK)
             chunk = fo.read

@@ -15,6 +15,7 @@ Foundation, Inc., 675 Mass Ave, Cambridge, MA 02139, USA.
 
 import pprint
 import sys
+import types
 
 from func.overlord import client
 from func.overlord import base_command
@@ -40,16 +41,15 @@ class Grep(base_command.BaseCommand):
                                default=self.delegate,
                                action="store_true")
         self.parser.add_option('-m', '--modules', dest="modules",
-                               help="a list of modules to be searched",
-                               default=self.delegate,
-                               action="store",
-                               type="string")
+                               help="modules to be searched",
+                               default=[],
+                               action="append")
         
               
     def handleOptions(self, options):
         self.options = options
         self.verbose = options.verbose
-
+        
         # I'm not really a fan of the "module methodname" approach
         # but we'll keep it for now -akl
 
@@ -84,28 +84,35 @@ class Grep(base_command.BaseCommand):
         # which is better, this is across hosts (aka, walk across the
         # hosts, then ask all the module.grep methods to it, then on to
         # next host
-
+        
+        existent_minions_class = self.overlord_obj.minions_class # keep a copy
+        
         for host in host_modules.keys():
+            host_only_mc = self.overlord_obj._mc(host, noglobs=True)
+            host_only_mc.get_all_hosts()
+            self.overlord_obj.minions_class = host_only_mc
             for module in host_modules[host]:
-                if self.options.verbose:
-                    print "Scanning module: %s on host: %s" %(module, host)
+                if self.options.modules and module in self.options.modules:
+                    if self.options.verbose:
+                        print "Scanning module: %s on host: %s" %(module, host)
+                    
+                    tmp_res = self.overlord_obj.run(module,"grep",[self.word])
                 
-                tmp_res = self.overlord_obj.run(module,"grep",[self.word])
-            
-                if self.options.async:
-                    tmp_res = self.overlord_obj.local.utils.async_poll(tmp_res,None)
-                #FIXME: I'm not sure what the best format for this is...
-                if tmp_res[host]:
-                    print "%s: %s" % (host, pprint.pformat(tmp_res[host]))
-
+                    if self.options.async:
+                        tmp_res = self.overlord_obj.local.utils.async_poll(tmp_res,None)
+                    #FIXME: I'm not sure what the best format for this is...
+                    if tmp_res[host]:
+                        print "%s: %s" % (host, pprint.pformat(tmp_res[host]))
+        
+        self.overlord_obj.minions_class = existent_minions_class # put it back
+        
     def _get_host_grep_modules(self, server_spec):
         """
         In cases when user doesnt supply the module list
         we have to consider that all of the modules are
         chosen so that method will return a list of them
         """
-        from func.overlord.client import Minions,Overlord
-        
+         
         #insetad of getting all of the modules we consider
         #that all of machines has the same modules ...
 
@@ -114,19 +121,32 @@ class Grep(base_command.BaseCommand):
         #FIXME: we need to change this to create a dict of hostname->modules
         # so we only call module.grep on systems that report it. things like
         # virt/hardware aren't available on all guests
-        m = Minions(server_spec)
-        hosts = m.get_all_hosts()
+        
+        if not hasattr(self, 'overlord_obj'):
+            self.getOverlord()
+        
+        hosts = self.overlord_obj.minions_class.get_all_hosts()
+        existent_minions_class = self.overlord_obj.minions_class # keep a copy        
         if not hosts:
             raise Exception("No minions on system!")
+
+        
         for host in hosts:
-            fc = Overlord(host, noglobs=True)
-            module_methods = fc.system.inventory()
+            host_only_mc = self.overlord_obj._mc(host, noglobs=True)
+            self.overlord_obj.minions_class = host_only_mc
+            module_methods = self.overlord_obj.system.inventory()
 
-            for module in module_methods:
-                # searching for "grep"? meta
-                if "grep" in module_methods[module]:
-                    if not host_modules.has_key(host):
-                        host_modules[host] = []
-                    host_modules[host].append(module)
+            for hn in module_methods:
+                if type(module_methods[hn]) != types.DictType:
+                    sys.stderr.write("Error on host %s: %s" % (hn, ' '.join(module_methods[hn])))
+                    continue
 
+                for module in module_methods[hn]:
+                    # searching for "grep"? meta
+                    if "grep" in module_methods[hn][module]:
+                        if not host_modules.has_key(host):
+                            host_modules[host] = []
+                        host_modules[host].append(module)
+        
+        self.overlord_obj.minions_class = existent_minions_class # put it back
         return host_modules

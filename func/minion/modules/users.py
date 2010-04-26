@@ -479,7 +479,6 @@ class UsersModule(func_module.FuncModule):
     """Returns group info for all users on the target system(s)."""
     return self.groups_inventory()
   
-  @func_module.findout
   def grep(self, word):
     """
     Grep some info from user_list and
@@ -496,6 +495,7 @@ class UsersModule(func_module.FuncModule):
     results[self.user_list].extend([res for res in user_list if res.lower().find(word)!=-1])
     results[self.group_list].extend([res for res in group_list if res.lower().find(word)!=-1])
     return results
+  grep = func_module.findout(grep)
 
 # CONVERSION METHODS
   def user_to_uid(self,user):

@@ -31,7 +31,6 @@ class SysctlModule(func_module.FuncModule):
     def set(self, name, value):
         return self.__run("/sbin/sysctl -w %s=%s" % (name, value))
 
-    @func_module.findout
     def grep(self, word):
         """
         Grep info from sysctl
@@ -44,6 +43,7 @@ class SysctlModule(func_module.FuncModule):
                 results[self.list].append(res)
         
         return results
+    grep = func_module.findout(grep)
 
             
     def register_method_args(self):

@@ -100,9 +100,11 @@ class XmlRpcInterface(object):
         methods.sort()
         return methods
     
+    def load_module(self, name):
+        """FIXME load a module and set it up on the running xmlrpc instance"""
+        pass
     
     import func.minion.modules.func_module as fm
-    @fm.findout
     def grep(self,word):
         """
         Finding the wanted word
@@ -125,6 +127,7 @@ class XmlRpcInterface(object):
                 return_dict[self.list_methods]=m
 
         return return_dict
+    grep = fm.findout(grep)
 
 
     def inventory(self):
@@ -201,7 +204,14 @@ class FuncApiMethod:
             rc = utils.nice_exception(t,v,tb)
         self.logger.debug("Return code for %s: %s" % (self.__name, rc))
 
-        return rc
+        if self.__name == 'jobs.job_status':
+            # don't double-encode (which ultimately ends up being a no-op,
+            # since deep_base64(deep_base64(foo)) == foo
+            # the return value stored by jobthing is already encoded at this
+            # point
+            return rc
+        else:
+            return futils.deep_base64(rc)
 
 
 def serve():
@@ -243,13 +253,23 @@ class FuncSSLXMLRPCServer(AuthedXMLRPCServer.AuthedSSLXMLRPCServer,
 
         XmlRpcInterface.__init__(self)
         hn = func_utils.get_hostname_by_route()
-
-        self.key = "%s/%s.pem" % (self.cm_config.cert_dir, hn)
-        self.cert = "%s/%s.cert" % (self.cm_config.cert_dir, hn)
-        self.ca = "%s/ca.cert" % self.cm_config.cert_dir
+        
+        if self.config.key_file != '':
+            self.key = self.config.key_file
+        else:
+            self.key = "%s/%s.pem" % (self.cm_config.cert_dir, hn)            
+        
+        if self.config.cert_file != '':
+            self.cert = self.config.cert_file
+        else:
+            self.cert = "%s/%s.cert" % (self.cm_config.cert_dir, hn)
+        if self.config.ca_file != '':
+            self.ca = self.config.ca_file
+        else:
+            self.ca = "%s/ca.cert" % self.cm_config.cert_dir
+        
         
         self._our_ca = certs.retrieve_cert_from_file(self.ca)
-
         self.acls = acls_mod.Acls(config=self.config)
         
         AuthedXMLRPCServer.AuthedSSLXMLRPCServer.__init__(self, args,
@@ -311,7 +331,7 @@ class FuncSSLXMLRPCServer(AuthedXMLRPCServer.AuthedSSLXMLRPCServer,
         except:
             (t, v, tb) = sys.exc_info()
             rc = utils.nice_exception(t, v, tb)
-            return rc
+            return futils.deep_base64(rc)
 
     def auth_cb(self, request, client_address):
         peer_cert = request.get_peer_certificate()
@@ -358,8 +378,10 @@ def main(argv):
         print "serving...\n"
 
     try:
-        hn = futils.get_hostname_by_route()
-        requester.request_cert(hn)
+        config = read_config("/etc/func/minion.conf", FuncdConfig)
+        if config.use_certmaster:
+            hn = futils.get_hostname_by_route()
+            requester.request_cert(hn)
         serve()
     except codes.FuncException, e:
         print >> sys.stderr, 'error: %s' % e

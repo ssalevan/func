@@ -25,13 +25,13 @@ class Yum(func_module.FuncModule):
     description = "Package updates through yum."
 
     def update(self, pkg=None):
-	import yum
+        import yum
         ayum = yum.YumBase()
         ayum.doGenericSetup()
         ayum.doRepoSetup()
         try:
             ayum.doLock()
-            if pkg != None:
+            if pkg in [None, '']:
                 tx_result = ayum.update(pattern=pkg)
             else:
                 tx_result = ayum.update()
@@ -53,7 +53,7 @@ class Yum(func_module.FuncModule):
         if type(filter) not in [list, tuple]:
             filter = [filter]
 
-	import yum
+        import yum
         ayum = yum.YumBase()
         ayum.doConfigSetup()
         ayum.doTsSetup()
@@ -71,7 +71,6 @@ class Yum(func_module.FuncModule):
 
         return map(str, pkg_list)
     
-    @func_module.findout
     def grep(self, word):
         """
         Grep info from module
@@ -81,6 +80,7 @@ class Yum(func_module.FuncModule):
         results[self.check_update].extend([res for res in update_res if res.lower().find(word)!=-1])
         
         return results
+    grep = func_module.findout(grep)
     
     def register_method_args(self):
         """

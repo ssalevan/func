@@ -46,7 +46,6 @@ class SmartModule(func_module.FuncModule):
 
         return (cmd.returncode, results)
 
-    @func_module.findout
     def grep(self, word):
         """
         grep some info from grep
@@ -59,6 +58,7 @@ class SmartModule(func_module.FuncModule):
                 if res.lower().find(word)!=-1:
                     results[self.info].append(res)
         return results
+    grep = func_module.findout(grep)
 
     def register_method_args(self):
         """

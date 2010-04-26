@@ -14,9 +14,6 @@ Command class.
 import optparse
 import sys
 
-from certmaster.config import read_config, CONFIG_FILE
-
-from certmaster.commonconfig import CMConfig
 
 class CommandHelpFormatter(optparse.IndentedHelpFormatter):
     """
@@ -124,8 +121,7 @@ class Command:
         self.stdout = stdout
         self.stderr = stderr
         self.parentCommand = parentCommand
-
-        self.config = read_config(CONFIG_FILE, CMConfig)
+        
 
         # create subcommands if we have them
         self.subCommands = {}

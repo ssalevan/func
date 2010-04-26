@@ -198,7 +198,6 @@ class FileTracker(func_module.FuncModule):
 
     #==========================================================
     
-    @func_module.findout
     def grep(self, word):
         """
         Some search utility about tracked files
@@ -215,6 +214,7 @@ class FileTracker(func_module.FuncModule):
                     results[self.inventory].append(res)
             
         return results
+    grep = func_module.findout(grep)
     
     
     def __sumfile(self, fobj):

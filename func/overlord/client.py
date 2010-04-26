@@ -18,6 +18,10 @@ import sys
 import glob
 import os
 import time
+import shlex
+import subprocess
+import re
+import fnmatch
 import func.yaml as yaml
 
 from certmaster.commonconfig import CMConfig
@@ -103,13 +107,17 @@ class Minions(object):
         self.exclude_spec = exclude_spec
 
         self.cm_config = read_config(CONFIG_FILE, CMConfig)
-        self.group_class = groups.Groups(backend=groups_backend,**kwargs)
+        self.overlord_config = read_config(OVERLORD_CONFIG_FILE, OverlordConfig)        
+        self.group_class = groups.Groups(backend=groups_backend,
+                                    get_hosts_for_spec=self.get_hosts_for_spec,
+                                    **kwargs)
         
         #lets make them sets so we dont loop again and again
         self.all_hosts = set()
         self.all_certs = set()
         self.all_urls = []
-
+        self._downed_hosts = []
+        
     def _get_new_hosts(self):
         self.new_hosts = self._get_group_hosts(self.spec)
         return self.new_hosts
@@ -199,19 +207,31 @@ class Minions(object):
         #we keep it all the time as a set so 
         return list(self.all_hosts)
 
-    def get_urls(self):
-        self._get_new_hosts()
-        self._get_all_hosts()
-        for host in self.all_hosts:
-            if not self.just_fqdns:
-                self.all_urls.append("https://%s:%s" % (host, self.port))
-            else:
-                self.all_urls.append(host)  
+    def get_urls(self, hosts=[]):
+        if not hosts:
+            self._get_new_hosts()
+            self._get_all_hosts()
+            hosts = self.all_hosts
         
-        if self.verbose and len(self.all_urls) == 0:
+        results = []
+        
+        for host in hosts:
+            if host in self.downed_hosts:
+                sys.stderr.write("%s excluded due to being listed in %s\n" % (host, self.overlord_config.host_down_list))
+                # FIXME maybe we should splat something to the logs?
+                continue
+            if not self.just_fqdns:
+                host_res = "https://%s:%s" % (host, self.port)
+            else:
+                host_res = host
+
+            if not host_res in results: # this might get slow if there are thousands of hosts
+                results.append(host_res)
+        
+        if self.verbose and len(results) == 0:
             sys.stderr.write("no hosts matched\n")
 
-        return self.all_urls
+        return results
 
     # FIXME: hmm, dont like this bit of the api... -al;
     def is_minion(self):
@@ -220,6 +240,109 @@ class Minions(object):
             return True
         return False
 
+    def _get_downed_hosts(self):
+        """returns a list of minions which are known to not be up"""
+        if self._downed_hosts:
+            return self._downed_hosts
+            
+        hosts = []
+        if self.overlord_config.host_down_list and \
+                  os.path.exists(self.overlord_config.host_down_list):
+            fo = open(self.overlord_config.host_down_list, 'r')
+            for line in fo.readlines():
+                if re.match('\s*(#|$)', line):
+                    continue
+                hn = line.replace('\n','')
+                if hn not in hosts:
+                    hosts.append(hn)
+            fo.close()
+        
+        self._downed_hosts = hosts
+        
+        return self._downed_hosts
+    
+    downed_hosts = property(fget=lambda self: self._get_downed_hosts())
+
+class PuppetMinions(Minions):
+    def __init__(self, spec, port=51234,
+                 noglobs=None, verbose=None,
+                 just_fqdns=False, groups_backend="conf",
+                 delegate=False, minionmap={},exclude_spec=None,**kwargs):
+        Minions.__init__(self, spec, port=port, noglobs=noglobs, verbose=verbose,
+                        just_fqdns=just_fqdns, groups_backend=groups_backend,
+                        delegate=delegate, minionmap=minionmap, 
+                        exclude_spec=exclude_spec,**kwargs)
+
+    def _get_hosts_for_spec(self,each_gloob):
+        """
+        Pull only for specified spec
+        """
+        #these will be returned
+        tmp_certs = set()
+        tmp_hosts = set()
+        
+        # get all hosts
+        if os.access(self.overlord_config.puppet_inventory, os.R_OK):
+            fo = open(self.overlord_config.puppet_inventory, 'r')
+            host_inv = {}
+            time_format = '%Y-%m-%dT%H:%M:%S%Z'
+            now = time.time()
+            for line in fo.readlines():
+                if re.match('\s*(#|$)', line):
+                    continue
+                (serial, before, after, cn) = line.split()
+                before = time.strftime('%s', time.strptime(before, time_format))
+                if now < int(before):
+                    continue
+                after = time.strftime('%s', time.strptime(after, time_format))
+                if now > int(after):
+                    continue
+
+                hn = cn.replace('/CN=','')
+                hn = hn.replace('\n','')
+                if hn in host_inv:
+                    if host_inv[hn] > serial:
+                        continue
+                host_inv[hn] = serial
+            fo.close()
+            
+            # revoked certs
+            revoked_serials = self._return_revoked_serials(self.overlord_config.puppet_crl)
+            for hostname in host_inv.keys():
+                if int(host_inv[hostname], 16) in revoked_serials:
+                    continue
+                pempath = '%s/%s.pem' % (self.overlord_config.puppet_signed_certs_dir, hostname)
+                if not os.path.exists(pempath):
+                    continue
+                if fnmatch.fnmatch(hostname, each_gloob):
+                    tmp_hosts.add(hostname)
+                    # don't return certs path - just hosts
+
+        return tmp_hosts,tmp_certs
+
+    def _return_revoked_serials(self, crlfile):
+        try:
+            serials = []
+            crltext = open(crlfile, 'r').read()
+            from OpenSSL import crypto
+            crl = crypto.load_crl(crypto.FILETYPE_PEM, crltext)
+            revs = crl.get_revoked()
+            for revoked in revs:
+                serials.append(str(revoked.get_serial()))
+            return serials
+        except (ImportError, AttributeError), e:
+            call = '/usr/bin/openssl crl -text -noout -in %s' % crlfile
+            call = shlex.split(call)
+            serials = []
+            (res,err) = subprocess.Popen(call, stdout=subprocess.PIPE).communicate()
+            for line in res.split('\n'):
+                if line.find('Serial Number:') == -1:
+                    continue
+                (crap, serial) = line.split(':')
+                serial = serial.strip()
+                serial = int(serial, 16)
+                serials.append(serial)  
+            return serials
 
 
 # does the hostnamegoo actually expand to anything?
@@ -252,13 +375,13 @@ class Overlord(object):
         @config -- optional config object
         """
 
-        self.config  = read_config(FUNCD_CONFIG_FILE, FuncdConfig)
+        self.cm_config = read_config(CONFIG_FILE, CMConfig)
+        self.funcd_config  = read_config(FUNCD_CONFIG_FILE, FuncdConfig)
+        self.config = read_config(OVERLORD_CONFIG_FILE, OverlordConfig)
+        if config:
+            self.config = config
 
-        self.cm_config = config
-        if config is None:
-            self.cm_config = read_config(CONFIG_FILE, CMConfig)
-
-        self.overlord_config = read_config(OVERLORD_CONFIG_FILE, OverlordConfig)
+        self.overlord_config = self.config # for backward compat 
 
 
         self.server_spec = server_spec
@@ -275,8 +398,8 @@ class Overlord(object):
         # the default
         self.timeout = DEFAULT_TIMEOUT
         # the config file
-        if self.overlord_config.socket_timeout != 0.0:
-            self.timeout = self.overlord_config.socket_timeout
+        if self.config.socket_timeout != 0.0:
+            self.timeout = self.config.socket_timeout
         # commandline
         if timeout:
             self.timeout = timeout
@@ -293,6 +416,19 @@ class Overlord(object):
         self.delegate    = delegate
         self.mapfile     = mapfile
         self.minionmap   = {}
+
+        if self.config.puppet_minions:
+            self._mc = PuppetMinions
+        else:
+            self._mc = Minions
+            
+        self.minions_class = self._mc(self.server_spec, port=self.port, 
+                                noglobs=self.noglobs, verbose=self.verbose, 
+                                exclude_spec=self.exclude_spec)
+        self.minions = self.minions_class.get_urls()
+        
+        if len(self.minions) == 0:
+            raise Func_Client_Exception, 'Can\'t find any minions matching \"%s\". ' % self.server_spec
         
         if self.delegate:
             try:
@@ -319,6 +455,14 @@ class Overlord(object):
           # certmaster key, cert, ca
           # funcd key, cert, ca
           # raise FuncClientError
+        
+        if not client_key and self.config.key_file != '':
+            client_key = self.config.key_file
+        if not client_cert and self.config.cert_file != '':
+            client_cert = self.config.cert_file
+        if not ca and self.config.ca_file != '':
+            ca = self.config.ca_file
+            
         ol_key = '%s/certmaster.key' % self.cm_config.cadir
         ol_crt = '%s/certmaster.crt' % self.cm_config.cadir
         myname = func_utils.get_hostname_by_route()
@@ -653,7 +797,9 @@ class Overlord(object):
 
                 if self.interactive:
                     print retval
-                    
+
+                retval = func_utils.deep_base64(retval,1)
+
             except Exception, e:
                 (t, v, tb) = sys.exc_info()
                 retval = utils.nice_exception(t,v,tb)
@@ -672,13 +818,14 @@ class Overlord(object):
         if kwargs.has_key('call_path'): #we're delegating if this key exists
             delegation_path = kwargs['call_path']
             spec = kwargs['suboverlord'] #the sub-overlord directly beneath this one
-            minionobj = Minions(spec, port=self.port, verbose=self.verbose)
+            minions_hosts = self.minions_class.get_hosts_for_spec(spec)
             use_delegate = True #signal to process_server to call delegate method
-            minionurls = minionobj.get_urls() #the single-item url list to make async
+            minionurls = minionobj.get_urls(hosts=minion_hosts) #the single-item url list to make async
                                               #tools such as jobthing/forkbomb happy
         else: #we're directly calling minions, so treat everything normally
             spec = self.server_spec
-            minionurls = self.minions
+            minionurls = self.minions_class.get_urls()
+
             #print "Minion_url is :",minionurls
             #print "Process server is :",process_server
         
@@ -697,10 +844,11 @@ class Overlord(object):
                     (nkey,nvalue) = process_server(0, 0, x)
                     results[nkey] = nvalue    
         else:
+            
             # globbing is not being used, but still need to make sure
             # URI is well formed.
 #            expanded = expand_servers(self.server_spec, port=self.port, noglobs=True, verbose=self.verbose)[0]
-            expanded_minions = Minions(spec, port=self.port, noglobs=True, verbose=self.verbose)
+            expanded_minions = self._mc(spec, port=self.port, noglobs=True, verbose=self.verbose)
             minions = expanded_minions.get_urls()[0]
             results = process_server(0, 0, minions)
         

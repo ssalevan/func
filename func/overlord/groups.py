@@ -20,6 +20,10 @@ class Groups(object):
         Initialize the backend you are going to use
         """
         #initialize here the backend
+        if 'get_hosts_for_spec' in kwargs:
+            self.get_hosts_for_spec = kwargs['get_hosts_for_spec']
+            del kwargs['get_hosts_for_spec']
+            
         self.backend = choose_backend(**kwargs)
 
 

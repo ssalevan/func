@@ -85,7 +85,6 @@ class MountModule(func_module.FuncModule):
         return self.list()
 
     
-    @func_module.findout
     def grep(self,word):
         """
         Get some info about mounted devices
@@ -99,6 +98,7 @@ class MountModule(func_module.FuncModule):
                     if m_k.lower().find(word)!=-1 or m_v.lower().find(word)!=-1:
                         results[self.list].append({m_k:m_v})
         return results
+    grep = func_module.findout(grep)
                     
         
 

@@ -37,8 +37,8 @@ class ListMinions(base_command.BaseCommand):
     def do(self, args):
 
         self.server_spec = self.parentCommand.server_spec
-
-        minion_set = client.Minions(self.server_spec, port=self.port)
+        self.getOverlord()
+        minion_set = self.overlord_obj.minions_class
         servers = minion_set.get_all_hosts()
         servers.sort()
         for server in servers:

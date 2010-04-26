@@ -161,12 +161,50 @@ def get_fresh_method_instance(function_ref):
         except Exception,e:
             #something went wrong so we return the normal reference value
             return function_ref
-        return getattr(fresh_instance,function_ref.__name__)
+       	try:
+            return getattr(fresh_instance,function_ref.__name__)
+	except AttributeError:
+            return getattr(fresh_instance,function_ref._name_)
 
 def should_log(args):
     if args and type(args[len(args)-1]) == dict and args[len(args)-1].has_key('__logger__') and args[len(args)-1]['__logger__'] == True:
         return True
     return False
+
+def deep_base64(ds, mode = 0):
+    """
+    Run through an arbitrary datastructure of dicts / lists / tuples
+    to find all strings and base 64 encode/decode them with
+    xmlrpclib.Binary objects.
+
+    mode 0 - flip, 1 - force decode, 2 - force encode
+
+    """
+    from xmlrpclib import Binary
+
+    if isinstance(ds, Binary):
+        if mode == 2:
+             return ds
+        return ds.data
+
+    if isinstance(ds, basestring):
+        if mode == 1:
+             return ds
+        return Binary(ds)
+
+    if isinstance(ds, list) or isinstance(ds, tuple):
+        cleaned = map(lambda x: deep_base64(x,mode), ds)
+        if isinstance(ds, tuple):
+            cleaned = tuple(cleaned)
+        return cleaned
+
+    if isinstance(ds, dict):
+        cleaned = {}
+        for k,v in ds.iteritems():
+            cleaned[deep_base64(k)] = deep_base64(v,mode)
+        return cleaned
+
+    return ds
 
 #################### PROGRESS BAR ##################################
 # The code below can be used for progress bar purposes as we will do

@@ -160,7 +160,6 @@ EXCEPTION_LOGGER = 1
 
 class LogFactory(object):
     
-    @staticmethod
     def get_instance(type=STANDART_LOGGER,app_name="direct_log",log_place=None):
         if type == STANDART_LOGGER:
             if not log_place:
@@ -177,3 +176,5 @@ class LogFactory(object):
             return logger
         else:
             return None
+    get_instance = staticmethod(get_instance)
+
