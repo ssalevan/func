@@ -139,13 +139,13 @@ class XmlRpcInterface(object):
         # see which are where, but that seems lame -akl
         for module in self.modules.keys():
             inventory[module] = []
-            for method in self.handlers.keys():
-                # string match, ick. 
-                method_bits = method.split('.')
-                method_module = string.join(method_bits[:-1], '.')
-                method_name = method_bits[-1]
-                if method_module == module:
-                    inventory[module].append(method_name)
+        for method in self.handlers.keys():
+            # string match, ick. 
+            method_bits = method.split('.')
+            method_module = string.join(method_bits[:-1], '.')
+            method_name = method_bits[-1]
+            if method_module in inventory:
+                inventory[module_module].append(method_name)
 
         return inventory
 
