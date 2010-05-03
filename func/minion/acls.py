@@ -46,7 +46,7 @@ class Acls(object):
         files = glob.glob(acl_glob)
     
         for acl_file in files:
-            self.logger.debug("acl_file", acl_file)
+            self.logger.debug("acl_file %s", acl_file)
             try:
                 fo = open(acl_file, 'r')
             except (IOError, OSError), e:
