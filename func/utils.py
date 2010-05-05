@@ -57,10 +57,14 @@ def get_formated_jobid(**id_pack):
     return job_id
 
 def is_public_valid_method(obj, attr, blacklist=[]):
-    if inspect.ismethod(getattr(obj, attr)) and attr[0] != '_':
-        for b in blacklist:
-            if attr==b:
-                return False
+    # Note: the order can be important here.  func modules that try to inspect
+    # the list of available methods may run into inifinite recursion issues if
+    # getattr() is called on them.  They can work around this by placing the
+    # problematic code in a private method that's called from their public
+    # method if we perform the check for a leading underscore before the check
+    # that calls getattr()
+    if attr[0] != '_' and attr not in blacklist and \
+            inspect.ismethod(getattr(obj, attr)):
         return True
     return False
 
