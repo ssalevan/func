@@ -4,7 +4,6 @@ import urllib
 
 from certmaster import SSLCommon
 
-
 class SSL_Transport(xmlrpclib.Transport):
 
     user_agent = "pyOpenSSL_XMLRPC/%s - %s" % ('0.1', xmlrpclib.Transport.user_agent)
@@ -30,7 +29,6 @@ class SSLXMLRPCServerProxy(xmlrpclib.ServerProxy):
     def __init__(self, uri, pkey_file, cert_file, ca_cert_file, timeout=None):
         self.ctx = SSLCommon.CreateSSLContext(pkey_file, cert_file, ca_cert_file)
         xmlrpclib.ServerProxy.__init__(self, uri, SSL_Transport(ssl_context=self.ctx, timeout=timeout))
-
 
 class FuncServer(SSLXMLRPCServerProxy):
     def __init__(self, uri, pem=None, crt=None, ca=None, timeout=None):
